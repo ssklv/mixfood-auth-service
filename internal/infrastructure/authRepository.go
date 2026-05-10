@@ -89,7 +89,7 @@ func (r *authRepository) GetUserByID(ctx context.Context, id int64) (*domain.Use
 	return user, err
 }
 
-func (r *authRepository) GetSessionByToken(ctx context.Context, token string) (*UserSession, error) {
+func (r *authRepository) GetSessionByToken(ctx context.Context, token string) (*domain.UserSession, error) {
 	sql, args, err := r.psql.Select("user_id", "refresh_token", "expires_at").
 		From("sessions").
 		Where(sq.Eq{"refresh_token": token}).
@@ -98,13 +98,13 @@ func (r *authRepository) GetSessionByToken(ctx context.Context, token string) (*
 		return nil, err
 	}
 
-	session := &UserSession{}
+	session := &domain.UserSession{}
 	err = r.db.QueryRow(ctx, sql, args...).
 		Scan(&session.UserID, &session.RefreshToken, &session.ExpiresAt)
 	return session, err
 }
 
-func (r *authRepository) SaveSession(ctx context.Context, session *UserSession) error {
+func (r *authRepository) SaveSession(ctx context.Context, session *domain.UserSession) error {
 	sql, args, err := r.psql.
 		Insert("sessions").
 		Columns("user_id", "refresh_token", "expires_at").

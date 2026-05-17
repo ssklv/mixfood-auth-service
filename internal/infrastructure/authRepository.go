@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/ssklv/food-delivery-backend/internal/domain"
+	"github.com/ssklv/mixfood-auth-service/internal/domain"
 )
 
 type authRepository struct {
@@ -76,17 +76,30 @@ func (r *authRepository) GetUserByPhone(ctx context.Context, phone string) (*dom
 }
 
 func (r *authRepository) GetUserByID(ctx context.Context, id int64) (*domain.User, error) {
-	sql, args, err := r.psql.Select("id", "name", "phone", "role").
-		From("users").Where(sq.Eq{"id": id}).
+	sql, args, err := r.psql.
+		Select("id", "name", "phone", "password_hash", "role", "created_at", "updated_at").
+		From("users").
+		Where(sq.Eq{"id": id}).
 		ToSql()
+
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("build select by id query: %w", err)
 	}
 
 	user := &domain.User{}
 	err = r.db.QueryRow(ctx, sql, args...).
-		Scan(&user.ID, &user.Name, &user.Phone, &user.Role)
-	return user, err
+		Scan(
+			&user.ID, &user.Name, &user.Phone, &user.PasswordHash,
+			&user.Role, &user.CreatedAt, &user.UpdatedAt,
+		)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("scan user by id: %w", err)
+	}
+	return user, nil
 }
 
 func (r *authRepository) GetSessionByToken(ctx context.Context, token string) (*domain.UserSession, error) {

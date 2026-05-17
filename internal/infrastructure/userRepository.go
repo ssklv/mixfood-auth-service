@@ -21,7 +21,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/ssklv/food-delivery-backend/internal/domain"
+	"github.com/ssklv/mixfood-auth-service/internal/domain"
 
 	"context"
 )

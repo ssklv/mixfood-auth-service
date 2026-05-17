@@ -6,7 +6,7 @@ import (
 
 type passwordHasher struct{}
 
-func NewPasswordHeasher() *passwordHasher {
+func NewPasswordHasher() *passwordHasher {
 	return &passwordHasher{}
 }
 

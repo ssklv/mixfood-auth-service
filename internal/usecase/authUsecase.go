@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ssklv/food-delivery-backend/internal/domain"
+	"github.com/ssklv/mixfood-auth-service/internal/domain"
 )
-
-//ошибки добавить
 
 type authUsecase struct {
 	repository     AuthRepository
@@ -25,7 +23,7 @@ func NewAuthUsecase(rep AuthRepository, tokenProvider TokenProvider, passwordHas
 }
 
 func (au *authUsecase) ValidateToken(ctx context.Context, tokenString string) (*domain.User, error) {
-	userID, err := au.tokenProvider.ParseToken(tokenString)
+	userID, _, err := au.tokenProvider.ParseToken(tokenString)
 	if err != nil {
 		return nil, fmt.Errorf("validateToken: parse: %w", err)
 	}
@@ -62,16 +60,20 @@ func (au *authUsecase) generateTokenPair(ctx context.Context, user *domain.User)
 	return accessToken, refreshToken, nil
 }
 
-// //
 func (au *authUsecase) Register(ctx context.Context, phone, password, name string) (string, string, error) {
 	if err := validatePassword(password); err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("register: validate password: %w", err)
 	}
 	if err := validatePhone(phone); err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("register: validate phone: %w", err)
 	}
 	if err := validateName(name); err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("register: validate name: %w", err)
+	}
+
+	existingUser, err := au.repository.GetUserByPhone(ctx, phone)
+	if err == nil && existingUser != nil {
+		return "", "", ErrUserAlreadyExists
 	}
 
 	hashedPassword, err := au.passwordHasher.HashPassword(password)
@@ -83,7 +85,9 @@ func (au *authUsecase) Register(ctx context.Context, phone, password, name strin
 		Phone:        phone,
 		PasswordHash: hashedPassword,
 		Name:         name,
-		Role:         domain.RoleUser, ////
+		Role:         domain.RoleUser,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
 
 	err = au.repository.CreateUser(ctx, user)
@@ -99,16 +103,15 @@ func (au *authUsecase) Register(ctx context.Context, phone, password, name strin
 	return accessToken, refreshToken, nil
 }
 
-// //////
 func (au *authUsecase) Login(ctx context.Context, phone, password string) (string, string, error) {
 	user, err := au.repository.GetUserByPhone(ctx, phone)
 	if err != nil {
-		return "", "", fmt.Errorf("hash password: %w", err) ////ПЕРЕПИСАТЬ
+		return "", "", ErrInvalidCredentials
 	}
 
 	err = au.passwordHasher.CompareHashAndPassword(user.PasswordHash, password)
 	if err != nil {
-		return "", "", fmt.Errorf("hash password: %w", err) ///ПЕРЕПИСАТЬ
+		return "", "", ErrInvalidCredentials
 	}
 
 	accessToken, refreshToken, err := au.generateTokenPair(ctx, user)
@@ -118,7 +121,6 @@ func (au *authUsecase) Login(ctx context.Context, phone, password string) (strin
 	return accessToken, refreshToken, nil
 }
 
-// //////
 func (au *authUsecase) Logout(ctx context.Context, refreshToken string) error {
 	if refreshToken == "" {
 		return nil
@@ -135,13 +137,14 @@ func (au *authUsecase) Logout(ctx context.Context, refreshToken string) error {
 func (au *authUsecase) RefreshTokens(ctx context.Context, refreshToken string) (string, string, error) {
 	session, err := au.repository.GetSessionByToken(ctx, refreshToken)
 	if err != nil {
-		return "", "", fmt.Errorf("refresh: session not found: %w", err)
+		return "", "", ErrSessionNotFound
 	}
 
 	if time.Now().After(session.ExpiresAt) {
-		_ = au.repository.DeleteSession(ctx, refreshToken) // Удаляем протухшую
-		return "", "", fmt.Errorf("refresh: session expired")
+		_ = au.repository.DeleteSession(ctx, refreshToken)
+		return "", "", ErrSessionExpired
 	}
+
 	user, err := au.repository.GetUserByID(ctx, session.UserID)
 	if err != nil {
 		return "", "", fmt.Errorf("refresh: get user: %w", err)
@@ -150,4 +153,8 @@ func (au *authUsecase) RefreshTokens(ctx context.Context, refreshToken string) (
 	_ = au.repository.DeleteSession(ctx, refreshToken)
 
 	return au.generateTokenPair(ctx, user)
+}
+
+func (au *authUsecase) GetUserByID(ctx context.Context, id int64) (*domain.User, error) {
+	return au.repository.GetUserByID(ctx, id)
 }

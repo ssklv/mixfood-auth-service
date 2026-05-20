@@ -9,14 +9,16 @@ import (
 )
 
 type authUsecase struct {
-	repository     AuthRepository
+	authRepo       SessionRepository
+	userRepo       UserRepository
 	tokenProvider  TokenProvider
 	passwordHasher PasswordHasher
 }
 
-func NewAuthUsecase(rep AuthRepository, tokenProvider TokenProvider, passwordHasher PasswordHasher) AuthUsecase {
+func NewAuthUsecase(authRepo SessionRepository, userRepo UserRepository, tokenProvider TokenProvider, passwordHasher PasswordHasher) AuthUsecase {
 	return &authUsecase{
-		repository:     rep,
+		authRepo:       authRepo,
+		userRepo:       userRepo,
 		tokenProvider:  tokenProvider,
 		passwordHasher: passwordHasher,
 	}
@@ -28,23 +30,18 @@ func (au *authUsecase) ValidateToken(ctx context.Context, tokenString string) (*
 		return nil, fmt.Errorf("validateToken: parse: %w", err)
 	}
 
-	user, err := au.repository.GetUserByID(ctx, userID)
-	if err != nil {
-		return nil, fmt.Errorf("validateToken: get user: %w", err)
-	}
-
-	return user, nil
+	return au.userRepo.GetUserByID(ctx, userID)
 }
 
 func (au *authUsecase) generateTokenPair(ctx context.Context, user *domain.User) (string, string, error) {
 	accessToken, err := au.tokenProvider.GenerateAccessToken(user.ID, string(user.Role))
 	if err != nil {
-		return "", "", fmt.Errorf("generate access token: %w", err)
+		return "", "", err
 	}
 
 	refreshToken, err := au.tokenProvider.GenerateRefreshToken()
 	if err != nil {
-		return "", "", fmt.Errorf("generate refresh token: %w", err)
+		return "", "", err
 	}
 
 	session := &domain.UserSession{
@@ -53,32 +50,22 @@ func (au *authUsecase) generateTokenPair(ctx context.Context, user *domain.User)
 		ExpiresAt:    time.Now().Add(time.Hour * 24 * 30),
 	}
 
-	if err := au.repository.SaveSession(ctx, session); err != nil {
-		return "", "", fmt.Errorf("save session: %w", err)
+	if err := au.authRepo.SaveSession(ctx, session); err != nil {
+		return "", "", err
 	}
 
 	return accessToken, refreshToken, nil
 }
 
 func (au *authUsecase) Register(ctx context.Context, phone, password, name string) (string, string, error) {
-	if err := validatePassword(password); err != nil {
-		return "", "", fmt.Errorf("register: validate password: %w", err)
-	}
-	if err := validatePhone(phone); err != nil {
-		return "", "", fmt.Errorf("register: validate phone: %w", err)
-	}
-	if err := validateName(name); err != nil {
-		return "", "", fmt.Errorf("register: validate name: %w", err)
-	}
-
-	existingUser, err := au.repository.GetUserByPhone(ctx, phone)
-	if err == nil && existingUser != nil {
+	existingUser, _ := au.userRepo.GetUserByPhone(ctx, phone)
+	if existingUser != nil {
 		return "", "", ErrUserAlreadyExists
 	}
 
 	hashedPassword, err := au.passwordHasher.HashPassword(password)
 	if err != nil {
-		return "", "", fmt.Errorf("register: hash password: %w", err)
+		return "", "", err
 	}
 
 	user := &domain.User{
@@ -86,75 +73,51 @@ func (au *authUsecase) Register(ctx context.Context, phone, password, name strin
 		PasswordHash: hashedPassword,
 		Name:         name,
 		Role:         domain.RoleUser,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
 	}
 
-	err = au.repository.CreateUser(ctx, user)
-	if err != nil {
-		return "", "", fmt.Errorf("register: create user: %w", err)
+	if err := au.userRepo.CreateUser(ctx, user); err != nil {
+		return "", "", err
 	}
-
-	accessToken, refreshToken, err := au.generateTokenPair(ctx, user)
-	if err != nil {
-		return "", "", fmt.Errorf("generate tokens: %w", err)
-	}
-
-	return accessToken, refreshToken, nil
-}
-
-func (au *authUsecase) Login(ctx context.Context, phone, password string) (string, string, error) {
-	user, err := au.repository.GetUserByPhone(ctx, phone)
-	if err != nil {
-		return "", "", ErrInvalidCredentials
-	}
-
-	err = au.passwordHasher.CompareHashAndPassword(user.PasswordHash, password)
-	if err != nil {
-		return "", "", ErrInvalidCredentials
-	}
-
-	accessToken, refreshToken, err := au.generateTokenPair(ctx, user)
-	if err != nil {
-		return "", "", fmt.Errorf("login: generate tokens: %w", err)
-	}
-	return accessToken, refreshToken, nil
-}
-
-func (au *authUsecase) Logout(ctx context.Context, refreshToken string) error {
-	if refreshToken == "" {
-		return nil
-	}
-
-	err := au.repository.DeleteSession(ctx, refreshToken)
-	if err != nil {
-		return fmt.Errorf("logout: %w", err)
-	}
-
-	return nil
-}
-
-func (au *authUsecase) RefreshTokens(ctx context.Context, refreshToken string) (string, string, error) {
-	session, err := au.repository.GetSessionByToken(ctx, refreshToken)
-	if err != nil {
-		return "", "", ErrSessionNotFound
-	}
-
-	if time.Now().After(session.ExpiresAt) {
-		_ = au.repository.DeleteSession(ctx, refreshToken)
-		return "", "", ErrSessionExpired
-	}
-
-	user, err := au.repository.GetUserByID(ctx, session.UserID)
-	if err != nil {
-		return "", "", fmt.Errorf("refresh: get user: %w", err)
-	}
-
-	_ = au.repository.DeleteSession(ctx, refreshToken)
 
 	return au.generateTokenPair(ctx, user)
 }
 
+func (au *authUsecase) Login(ctx context.Context, phone, password string) (string, string, error) {
+	user, err := au.userRepo.GetUserByPhone(ctx, phone)
+	if err != nil {
+		return "", "", ErrInvalidCredentials
+	}
+
+	if err := au.passwordHasher.CompareHashAndPassword(user.PasswordHash, password); err != nil {
+		return "", "", ErrInvalidCredentials
+	}
+
+	return au.generateTokenPair(ctx, user)
+}
+
+func (au *authUsecase) Logout(ctx context.Context, refreshToken string) error {
+	return au.authRepo.DeleteSession(ctx, refreshToken)
+}
+
+func (au *authUsecase) RefreshTokens(ctx context.Context, refreshToken string) (string, string, error) {
+	session, err := au.authRepo.GetSessionByToken(ctx, refreshToken)
+	if err != nil {
+		return "", "", err
+	}
+
+	user, err := au.userRepo.GetUserByID(ctx, session.UserID)
+	if err != nil {
+		return "", "", err
+	}
+
+	_ = au.authRepo.DeleteSession(ctx, refreshToken)
+	return au.generateTokenPair(ctx, user)
+}
+
 func (au *authUsecase) GetUserByID(ctx context.Context, id int64) (*domain.User, error) {
-	return au.repository.GetUserByID(ctx, id)
+	return au.userRepo.GetUserByID(ctx, id)
+}
+
+func (au *authUsecase) UpdateProfile(ctx context.Context, params domain.UpdateUserParams) (*domain.User, error) {
+	return au.userRepo.UpdateUser(ctx, &params)
 }

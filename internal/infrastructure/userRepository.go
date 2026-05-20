@@ -1,29 +1,17 @@
 package infrastructure
 
-//squirrel для построения запросов
-//pgx для работы с таблицами
-
-//поменять название колонки имени
-
-//адрес
-
-//дописать
-//GetByID
-//GetByEmail возможно
-//Delete аккаунта
-//адрес возможно
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ssklv/mixfood-auth-service/internal/domain"
-
-	"context"
 )
 
 var userCols = []string{
@@ -31,7 +19,7 @@ var userCols = []string{
 	"name",
 	"phone",
 	"email",
-	"address", ///
+	"address",
 	"password_hash",
 	"role",
 	"created_at",
@@ -39,7 +27,7 @@ var userCols = []string{
 }
 
 type usersRepository struct {
-	db   *pgxpool.Pool //структура
+	db   *pgxpool.Pool
 	psql sq.StatementBuilderType
 }
 
@@ -96,6 +84,45 @@ func (r *usersRepository) GetUserByPhone(ctx context.Context, phone string) (*do
 	return userRes, nil
 }
 
+func (r *usersRepository) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
+	sql, args, err := r.psql.
+		Select(userCols...).
+		From("users").
+		Where(sq.Eq{"email": email}).
+		ToSql()
+
+	if err != nil {
+		return nil, fmt.Errorf("get user by email: %w", err)
+	}
+
+	userRes := &domain.User{}
+	row := r.db.QueryRow(ctx, sql, args...)
+
+	if err := scanUser(row, userRes); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("get user by email: %w", err)
+	}
+	return userRes, nil
+}
+
+func (r *usersRepository) CreateUser(ctx context.Context, user *domain.User) error {
+	sql, args, err := r.psql.
+		Insert("users").
+		Columns("name", "phone", "password_hash", "role", "created_at", "updated_at").
+		Values(user.Name, user.Phone, user.PasswordHash, user.Role, time.Now(), time.Now()).
+		Suffix("RETURNING " + strings.Join(userCols, ", ")).
+		ToSql()
+
+	if err != nil {
+		return fmt.Errorf("build create user query: %w", err)
+	}
+
+	row := r.db.QueryRow(ctx, sql, args...)
+	return scanUser(row, user)
+}
+
 func (r *usersRepository) UpdateUser(ctx context.Context, input *domain.UpdateUserParams) (*domain.User, error) {
 	setCount := 0
 	builder := r.psql.Update("users")
@@ -104,17 +131,14 @@ func (r *usersRepository) UpdateUser(ctx context.Context, input *domain.UpdateUs
 		builder = builder.Set("name", *input.Name)
 		setCount++
 	}
-
 	if input.Phone != nil {
 		builder = builder.Set("phone", *input.Phone)
 		setCount++
 	}
-
 	if input.Email != nil {
 		builder = builder.Set("email", *input.Email)
 		setCount++
 	}
-
 	if input.Address != nil {
 		builder = builder.Set("address", *input.Address)
 		setCount++
@@ -123,6 +147,9 @@ func (r *usersRepository) UpdateUser(ctx context.Context, input *domain.UpdateUs
 	if setCount == 0 {
 		return nil, ErrNoChanges
 	}
+
+	// Добавляем обновление времени
+	builder = builder.Set("updated_at", time.Now())
 
 	sql, args, err := builder.
 		Where(sq.Eq{"id": input.ID}).
@@ -142,7 +169,6 @@ func (r *usersRepository) UpdateUser(ctx context.Context, input *domain.UpdateUs
 		}
 
 		var pgErr *pgconn.PgError
-
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			if strings.Contains(pgErr.ConstraintName, "phone") {
 				return nil, ErrDuplicatePhone
@@ -176,7 +202,6 @@ func (r *usersRepository) DeleteUser(ctx context.Context, id int64) error {
 	}
 
 	return nil
-
 }
 
 func scanUser(row pgx.Row, user *domain.User) error {

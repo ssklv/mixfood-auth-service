@@ -6,11 +6,15 @@ import (
 	"github.com/ssklv/mixfood-auth-service/internal/domain"
 )
 
-type AuthRepository interface {
+type UserRepository interface {
 	CreateUser(ctx context.Context, user *domain.User) error
 	GetUserByPhone(ctx context.Context, phone string) (*domain.User, error)
 	GetUserByID(ctx context.Context, id int64) (*domain.User, error)
+	UpdateUser(ctx context.Context, params *domain.UpdateUserParams) (*domain.User, error)
+	DeleteUser(ctx context.Context, id int64) error
+}
 
+type SessionRepository interface {
 	SaveSession(ctx context.Context, session *domain.UserSession) error
 	GetSessionByToken(ctx context.Context, token string) (*domain.UserSession, error)
 	DeleteSession(ctx context.Context, refreshToken string) error
@@ -23,6 +27,7 @@ type AuthUsecase interface {
 	ValidateToken(ctx context.Context, tokenString string) (*domain.User, error)
 	RefreshTokens(ctx context.Context, refreshToken string) (string, string, error)
 	GetUserByID(ctx context.Context, id int64) (*domain.User, error)
+	UpdateProfile(ctx context.Context, params domain.UpdateUserParams) (*domain.User, error)
 }
 
 type TokenProvider interface {
@@ -34,17 +39,4 @@ type TokenProvider interface {
 type PasswordHasher interface {
 	HashPassword(password string) (string, error)
 	CompareHashAndPassword(hash, password string) error
-}
-
-type SessionRepository interface {
-	SaveSession(ctx context.Context, session *domain.UserSession) error
-	DeleteSession(ctx context.Context, refreshToken string) error
-}
-
-type UserRepository interface {
-	GetUserByID(ctx context.Context, id string) (*domain.User, error)
-	GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
-	GetUserByPhone(ctx context.Context, phone string) (*domain.User, error)
-	UpdateUser(ctx context.Context, input *domain.UpdateUserParams) (*domain.User, error)
-	DeleteUser(ctx context.Context, id int64) error
 }

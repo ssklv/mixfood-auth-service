@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/joho/godotenv"
 
@@ -20,6 +22,15 @@ type zapAdapter struct{}
 func (za *zapAdapter) Error(msg string, fields ...any) { logger.Logger.Error(msg) }
 func (za *zapAdapter) Warn(msg string, fields ...any)  { logger.Logger.Warn(msg) }
 
+// @title MixFood Auth Service API
+// @version 1.0
+// @description Сервис аутентификации для доставки еды
+// @host localhost:8080
+// @BasePath /
+
+// @securityDefinitions.apikey ApiKeyAuth
+// @in cookie
+// @name access_token
 func main() {
 	logger.InitLogger()
 	defer logger.Logger.Sync()
@@ -31,7 +42,12 @@ func main() {
 	cfg := config.Load()
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
 
-	app := fiber.New(fiber.Config{AppName: "MixFood Auth Service v1.0"})
+	app := fiber.New(fiber.Config{
+		AppName: "MixFood Auth Service v1.0",
+	})
+
+	app.Get("/docs/*", adaptor.HTTPHandler(http.StripPrefix("/docs/", http.FileServer(http.Dir("./docs")))))
+
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowCredentials: true,
@@ -44,7 +60,6 @@ func main() {
 	}
 	defer conn.Close()
 
-	// 1. Инициализация инфраструктуры
 	tokenProvider := infrastructure.NewTokenProvider(cfg.JWTSecret, cfg.AccessTTL)
 	passwordHasher := infrastructure.NewPasswordHasher()
 
@@ -52,7 +67,6 @@ func main() {
 	sessionRepo := infrastructure.NewSessionRepository(conn, psql)
 	addressRepo := infrastructure.NewAddressRepository(conn, psql)
 
-	// 2. Инициализация Usecase (порядок аргументов должен совпадать с твоим usecase!)
 	authUsecase := usecase.NewAuthUsecase(
 		sessionRepo,
 		userRepo,
@@ -61,7 +75,6 @@ func main() {
 		passwordHasher,
 	)
 
-	// 3. Инициализация Handlers
 	logAdapter := &zapAdapter{}
 	authHandler := handlers.NewUsersHandler(authUsecase, tokenProvider, logAdapter)
 	authHandler.RegisterRoutes(app)

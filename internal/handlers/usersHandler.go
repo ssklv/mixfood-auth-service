@@ -5,7 +5,6 @@ import (
 	"github.com/ssklv/mixfood-auth-service/internal/usecase"
 )
 
-// Делаем имена с большой буквы, чтобы они были видны во всех файлах пакета
 const (
 	AccessCookie  = "access_token"
 	RefreshCookie = "refresh_token"

@@ -1,0 +1,158 @@
+basePath: /
+definitions:
+  domain.User:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      phone:
+        type: string
+      role:
+        $ref: '#/definitions/domain.UserRole'
+      updatedAt:
+        type: string
+    type: object
+  domain.UserRole:
+    enum:
+    - user
+    - admin
+    type: string
+    x-enum-comments:
+      RoleUser: client
+    x-enum-descriptions:
+    - client
+    - ""
+    x-enum-varnames:
+    - RoleUser
+    - RoleAdmin
+  handlers.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  handlers.loginReq:
+    properties:
+      password:
+        type: string
+      phone:
+        type: string
+    type: object
+  handlers.registerReq:
+    properties:
+      name:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Сервис аутентификации для доставки еды
+  title: MixFood Auth Service API
+  version: "1.0"
+paths:
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Телефон и пароль
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.loginReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Логин
+      tags:
+      - Auth
+  /api/auth/logout:
+    post:
+      responses:
+        "204":
+          description: No Content
+      summary: Выход
+      tags:
+      - Auth
+  /api/auth/refresh:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Обновление токенов
+      tags:
+      - Auth
+  /api/auth/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные пользователя
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.registerReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Регистрация
+      tags:
+      - Auth
+  /api/users/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные профиля
+          schema:
+            $ref: '#/definitions/domain.User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Получить профиль пользователя
+      tags:
+      - Profile
+securityDefinitions:
+  ApiKeyAuth:
+    in: cookie
+    name: access_token
+    type: apiKey
+swagger: "2.0"

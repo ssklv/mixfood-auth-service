@@ -20,6 +20,14 @@ func (uh *usersHandler) AuthMiddleware() fiber.Handler {
 	}
 }
 
+// @Summary Получить профиль пользователя
+// @Tags Profile
+// @Produce json
+// @Security ApiKeyAuth
+// @Success 200 {object} domain.User "Данные профиля"
+// @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /api/users/me [get]
 func (uh *usersHandler) getMyProfile(c fiber.Ctx) error {
 	userID := c.Locals("userID").(int64)
 	user, err := uh.usecase.GetUserByID(c.Context(), userID)

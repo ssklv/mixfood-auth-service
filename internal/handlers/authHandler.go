@@ -18,7 +18,19 @@ type loginReq struct {
 	Phone    string `json:"phone"`
 	Password string `json:"password"`
 }
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
 
+// @Summary Регистрация
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param input body registerReq true "Данные пользователя"
+// @Success 201
+// @Failure 400 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
+// @Router /api/auth/register [post]
 func (uh *usersHandler) register(c fiber.Ctx) error {
 	var req registerReq
 	if err := c.Bind().Body(&req); err != nil {
@@ -45,6 +57,14 @@ func (uh *usersHandler) register(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusCreated)
 }
 
+// @Summary Логин
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param input body loginReq true "Телефон и пароль"
+// @Success 200
+// @Failure 401 {object} ErrorResponse
+// @Router /api/auth/login [post]
 func (uh *usersHandler) login(c fiber.Ctx) error {
 	var req loginReq
 	if err := c.Bind().Body(&req); err != nil {
@@ -66,6 +86,10 @@ func (uh *usersHandler) login(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
+// @Summary Выход
+// @Tags Auth
+// @Success 204
+// @Router /api/auth/logout [post]
 func (uh *usersHandler) logout(c fiber.Ctx) error {
 	refreshToken := c.Cookies(RefreshCookie)
 	err := uh.usecase.Logout(c.Context(), refreshToken)
@@ -80,6 +104,11 @@ func (uh *usersHandler) logout(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// @Summary Обновление токенов
+// @Tags Auth
+// @Success 200
+// @Failure 401 {object} ErrorResponse
+// @Router /api/auth/refresh [get]
 func (uh *usersHandler) refresh(c fiber.Ctx) error {
 	oldRefreshToken := c.Cookies(RefreshCookie)
 	if oldRefreshToken == "" {

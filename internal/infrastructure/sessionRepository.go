@@ -22,9 +22,7 @@ func (r *sessionsRepository) SaveSession(ctx context.Context, session *domain.Us
 		Insert("sessions").
 		Columns("user_id", "refresh_token", "expires_at").
 		Values(session.UserID, session.RefreshToken, session.ExpiresAt).
-		Suffix("ON CONFLICT (user_id) DO UPDATE SET refresh_token = EXCLUDED.refresh_token, expires_at = EXCLUDED.expires_at").
-		ToSql()
-
+		Suffix("ON CONFLICT (user_id) DO UPDATE SET refresh_token = EXCLUDED.refresh_token, expires_at = EXCLUDED.expires_at").ToSql()
 	if err != nil {
 		return err
 	}
@@ -38,15 +36,12 @@ func (r *sessionsRepository) GetSessionByToken(ctx context.Context, token string
 		From("sessions").
 		Where(sq.Eq{"refresh_token": token}).
 		ToSql()
-
 	if err != nil {
 		return nil, err
 	}
 	s := &domain.UserSession{}
-	err = r.db.
-		QueryRow(ctx, sql, args...).
+	return s, r.db.QueryRow(ctx, sql, args...).
 		Scan(&s.UserID, &s.RefreshToken, &s.ExpiresAt)
-	return s, err
 }
 
 func (r *sessionsRepository) DeleteSession(ctx context.Context, token string) error {

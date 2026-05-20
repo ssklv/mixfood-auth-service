@@ -5,37 +5,8 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/ssklv/mixfood-auth-service/internal/infrastructure"
 	"github.com/ssklv/mixfood-auth-service/internal/usecase"
 )
-
-type Logger interface {
-	Error(msg string, fields ...any)
-	Warn(msg string, fields ...any)
-}
-
-type UsersHandler interface {
-	RegisterRoutes(app *fiber.App)
-}
-
-type usersHandler struct {
-	usecase       usecase.AuthUsecase
-	tokenProvider usecase.TokenProvider
-	log           Logger
-}
-
-const (
-	accessCookie  = "access_token"
-	refreshCookie = "refresh_token"
-)
-
-func NewUsersHandler(uc usecase.AuthUsecase, tp usecase.TokenProvider, log Logger) UsersHandler {
-	return &usersHandler{
-		usecase:       uc,
-		tokenProvider: tp,
-		log:           log,
-	}
-}
 
 type registerReq struct {
 	Phone    string `json:"phone"`
@@ -46,54 +17,6 @@ type registerReq struct {
 type loginReq struct {
 	Phone    string `json:"phone"`
 	Password string `json:"password"`
-}
-
-func (uh *usersHandler) AuthMiddleware() fiber.Handler {
-	return func(c fiber.Ctx) error {
-		tokenStr := c.Cookies(accessCookie)
-		if tokenStr == "" {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Вы не авторизованы (токен отсутствует)"})
-		}
-		userID, role, err := uh.tokenProvider.ParseToken(tokenStr)
-		if err != nil {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Сессия устарела или токен невалиден"})
-		}
-
-		c.Locals("userID", userID)
-		c.Locals("userRole", role)
-
-		return c.Next()
-	}
-}
-
-func (uh *usersHandler) RequireRole(allowedRoles ...string) fiber.Handler {
-	return func(c fiber.Ctx) error {
-		userRole, ok := c.Locals("userRole").(string)
-		if !ok || userRole == "" {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Доступ запрещен (роль не определена)"})
-		}
-
-		for _, allowedRole := range allowedRoles {
-			if userRole == allowedRole {
-				return c.Next()
-			}
-		}
-
-		uh.log.Warn("Попытка несанкционированного доступа", "user_id", c.Locals("userID"), "role", userRole)
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "У вас недостаточно прав"})
-	}
-}
-
-func (uh *usersHandler) RegisterRoutes(app *fiber.App) {
-	auth := app.Group("/api/auth")
-	auth.Post("/register", uh.register)
-	auth.Post("/login", uh.login)
-	auth.Post("/logout", uh.logout)
-	auth.Get("/refresh", uh.refresh)
-
-	users := app.Group("/api/users")
-	users.Get("/me", uh.AuthMiddleware(), uh.getMyProfile)
-
 }
 
 func (uh *usersHandler) register(c fiber.Ctx) error {
@@ -144,7 +67,7 @@ func (uh *usersHandler) login(c fiber.Ctx) error {
 }
 
 func (uh *usersHandler) logout(c fiber.Ctx) error {
-	refreshToken := c.Cookies(refreshCookie)
+	refreshToken := c.Cookies(RefreshCookie)
 	err := uh.usecase.Logout(c.Context(), refreshToken)
 
 	uh.clearAuthCookies(c)
@@ -158,7 +81,7 @@ func (uh *usersHandler) logout(c fiber.Ctx) error {
 }
 
 func (uh *usersHandler) refresh(c fiber.Ctx) error {
-	oldRefreshToken := c.Cookies(refreshCookie)
+	oldRefreshToken := c.Cookies(RefreshCookie)
 	if oldRefreshToken == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "empty refresh token"})
 	}
@@ -173,28 +96,10 @@ func (uh *usersHandler) refresh(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-func (uh *usersHandler) getMyProfile(c fiber.Ctx) error {
-	userID, ok := c.Locals("userID").(int64)
-	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Не удалось определить пользователя"})
-	}
-
-	user, err := uh.usecase.GetUserByID(c.Context(), userID)
-	if err != nil {
-		if errors.Is(err, infrastructure.ErrUserNotFound) {
-			uh.log.Error("user not found in getMyProfile", err, "userID", userID)
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user not found"})
-		}
-		uh.log.Error("error getting profile", err, "userID", userID)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(user)
-}
-
+// Утилитные методы
 func (uh *usersHandler) setAuthCookies(c fiber.Ctx, accessToken, refreshToken string) {
 	c.Cookie(&fiber.Cookie{
-		Name:     accessCookie,
+		Name:     AccessCookie,
 		Value:    accessToken,
 		Path:     "/",
 		Expires:  time.Now().Add(time.Minute * 15),
@@ -202,7 +107,7 @@ func (uh *usersHandler) setAuthCookies(c fiber.Ctx, accessToken, refreshToken st
 		Secure:   false,
 	})
 	c.Cookie(&fiber.Cookie{
-		Name:     refreshCookie,
+		Name:     RefreshCookie,
 		Value:    refreshToken,
 		Path:     "/",
 		Expires:  time.Now().Add(time.Hour * 24 * 30),
@@ -213,7 +118,7 @@ func (uh *usersHandler) setAuthCookies(c fiber.Ctx, accessToken, refreshToken st
 
 func (uh *usersHandler) clearAuthCookies(c fiber.Ctx) {
 	c.Cookie(&fiber.Cookie{
-		Name:     accessCookie,
+		Name:     AccessCookie,
 		Value:    "",
 		Path:     "/",
 		Expires:  time.Now().Add(-time.Hour),
@@ -221,7 +126,7 @@ func (uh *usersHandler) clearAuthCookies(c fiber.Ctx) {
 		Secure:   false,
 	})
 	c.Cookie(&fiber.Cookie{
-		Name:     refreshCookie,
+		Name:     RefreshCookie,
 		Value:    "",
 		Path:     "/",
 		Expires:  time.Now().Add(-time.Hour),

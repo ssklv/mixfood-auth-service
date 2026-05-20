@@ -15,32 +15,23 @@ import (
 	"github.com/ssklv/pizza-shared/pkg/logger"
 )
 
-// var Logger *zap.Logger
 type zapAdapter struct{}
 
-func (za *zapAdapter) Error(msg string, fields ...any) {
-	logger.Logger.Error(msg)
-}
-
-func (za *zapAdapter) Warn(msg string, fields ...any) {
-	logger.Logger.Warn(msg)
-}
+func (za *zapAdapter) Error(msg string, fields ...any) { logger.Logger.Error(msg) }
+func (za *zapAdapter) Warn(msg string, fields ...any)  { logger.Logger.Warn(msg) }
 
 func main() {
 	logger.InitLogger()
 	defer logger.Logger.Sync()
-	logger.Logger.Info("Логгер из pizza-shared успешно запущен!")
+
 	if err := godotenv.Load(); err != nil {
-		logger.Logger.Warn("Файл .env не найден, Go будет использовать системные переменные окружения")
+		logger.Logger.Warn("Файл .env не найден")
 	}
 
 	cfg := config.Load()
-
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
-	app := fiber.New(fiber.Config{
-		AppName: "MixFood Auth Service v1.0",
-	})
 
+	app := fiber.New(fiber.Config{AppName: "MixFood Auth Service v1.0"})
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowCredentials: true,
@@ -49,24 +40,34 @@ func main() {
 
 	conn, err := infrastructure.Connect(cfg.DatabaseURL)
 	if err != nil {
-		logger.Logger.Fatal("Критическая ошибка: не удалось подключиться к БД: " + err.Error())
+		logger.Logger.Fatal("Ошибка БД: " + err.Error())
 	}
-	logger.Logger.Info("Успешное подключение к базе данных PostgreSQL")
 	defer conn.Close()
 
+	// 1. Инициализация инфраструктуры
 	tokenProvider := infrastructure.NewTokenProvider(cfg.JWTSecret, cfg.AccessTTL)
 	passwordHasher := infrastructure.NewPasswordHasher()
 
-	authRepo := infrastructure.NewAuthRepository(conn, psql)
-	authUsecase := usecase.NewAuthUsecase(authRepo, tokenProvider, passwordHasher)
+	userRepo := infrastructure.NewUserRepository(conn, psql)
+	sessionRepo := infrastructure.NewSessionRepository(conn, psql)
+	addressRepo := infrastructure.NewAddressRepository(conn, psql)
 
+	// 2. Инициализация Usecase (порядок аргументов должен совпадать с твоим usecase!)
+	authUsecase := usecase.NewAuthUsecase(
+		sessionRepo,
+		userRepo,
+		addressRepo,
+		tokenProvider,
+		passwordHasher,
+	)
+
+	// 3. Инициализация Handlers
 	logAdapter := &zapAdapter{}
-
 	authHandler := handlers.NewUsersHandler(authUsecase, tokenProvider, logAdapter)
 	authHandler.RegisterRoutes(app)
 
-	logger.Logger.Info(fmt.Sprintf("Сервер MixFood Auth успешно стартовал на порту :%s", cfg.ServerPort))
+	logger.Logger.Info(fmt.Sprintf("Сервер стартовал на :%s", cfg.ServerPort))
 	if err := app.Listen(":" + cfg.ServerPort); err != nil {
-		logger.Logger.Fatal("Сервер аварийно завершил работу: " + err.Error())
+		logger.Logger.Fatal("Сервер упал: " + err.Error())
 	}
 }

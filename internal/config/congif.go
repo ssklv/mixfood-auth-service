@@ -8,7 +8,6 @@ import (
 type Config struct {
 	ServerPort  string
 	DatabaseURL string
-	MigrateURL  string
 	JWTSecret   string
 	AccessTTL   time.Duration
 	RefreshTTL  time.Duration
@@ -22,16 +21,16 @@ func getEnv(key, defaultValue string) string {
 }
 
 func Load() *Config {
-	jwtSecret := getEnv("JWT_SECRET", "")
+	jwtSecret := os.Getenv("JWT_SECRET") // Используем os.Getenv напрямую для обязательных полей
 	if jwtSecret == "" {
-		panic("JWT_SECRET os required")
+		panic("JWT_SECRET is required")
 	}
+
 	return &Config{
 		ServerPort:  getEnv("SERVER_PORT", "8080"),
-		DatabaseURL: getEnv("POSTGRES_URL", "postgres://postgres:secret@localhost:5432/mixfood?sslmode=disable"),
-		MigrateURL:  getEnv("MIGRATE_URL", "file://migrations"),
+		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/mixfood?sslmode=disable"),
 		JWTSecret:   jwtSecret,
-		AccessTTL:   time.Minute * 15,
-		RefreshTTL:  time.Hour * 24 * 30,
+		AccessTTL:   15 * time.Minute,
+		RefreshTTL:  30 * 24 * time.Hour,
 	}
 }

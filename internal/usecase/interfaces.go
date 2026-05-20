@@ -14,6 +14,13 @@ type UserRepository interface {
 	DeleteUser(ctx context.Context, id int64) error
 }
 
+type AddressRepository interface {
+	CreateAddress(ctx context.Context, addr *domain.Address) error
+	GetAddressesByUserID(ctx context.Context, userID int64) ([]domain.Address, error)
+	DeleteAddress(ctx context.Context, id int64) error
+	UpdateAddress(ctx context.Context, addr *domain.Address) error
+}
+
 type SessionRepository interface {
 	SaveSession(ctx context.Context, session *domain.UserSession) error
 	GetSessionByToken(ctx context.Context, token string) (*domain.UserSession, error)
@@ -26,8 +33,16 @@ type AuthUsecase interface {
 	Logout(ctx context.Context, refreshToken string) error
 	ValidateToken(ctx context.Context, tokenString string) (*domain.User, error)
 	RefreshTokens(ctx context.Context, refreshToken string) (string, string, error)
+
+	///для юзер репозитория
 	GetUserByID(ctx context.Context, id int64) (*domain.User, error)
-	UpdateProfile(ctx context.Context, params domain.UpdateUserParams) (*domain.User, error)
+	UpdateProfile(ctx context.Context, params *domain.UpdateUserParams) (*domain.User, error)
+
+	//адресс
+	CreateAddress(ctx context.Context, addr *domain.Address) error
+	GetAddresses(ctx context.Context, userID int64) ([]domain.Address, error)
+	UpdateAddress(ctx context.Context, addr *domain.Address) error
+	DeleteAddress(ctx context.Context, id int64) error
 }
 
 type TokenProvider interface {

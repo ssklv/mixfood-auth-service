@@ -125,6 +125,109 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/user/address": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Создать адрес",
+                "parameters": [
+                    {
+                        "description": "Данные адреса",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.Address"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/user/addresses": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Получить мои адреса",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.Address"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/user/profile": {
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Обновить профиль",
+                "parameters": [
+                    {
+                        "description": "Данные",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.UpdateUserParams"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.User"
+                        }
+                    }
+                }
+            }
+        },
         "/api/users/me": {
             "get": {
                 "security": [
@@ -141,7 +244,7 @@ const docTemplate = `{
                 "summary": "Получить профиль пользователя",
                 "responses": {
                     "200": {
-                        "description": "Данные профиля",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/domain.User"
                         }
@@ -163,6 +266,46 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "domain.Address": {
+            "type": "object",
+            "properties": {
+                "apartment": {
+                    "type": "string"
+                },
+                "door_code": {
+                    "type": "string"
+                },
+                "entrance": {
+                    "type": "string"
+                },
+                "floor": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "street_house": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.UpdateUserParams": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.User": {
             "type": "object",
             "properties": {
@@ -194,13 +337,6 @@ const docTemplate = `{
             "enum": [
                 "user",
                 "admin"
-            ],
-            "x-enum-comments": {
-                "RoleUser": "client"
-            },
-            "x-enum-descriptions": [
-                "client",
-                ""
             ],
             "x-enum-varnames": [
                 "RoleUser",
@@ -240,13 +376,6 @@ const docTemplate = `{
                 }
             }
         }
-    },
-    "securityDefinitions": {
-        "ApiKeyAuth": {
-            "type": "apiKey",
-            "name": "access_token",
-            "in": "cookie"
-        }
     }
 }`
 
@@ -256,8 +385,8 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "localhost:8080",
 	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "MixFood Auth Service API",
-	Description:      "Сервис аутентификации для доставки еды",
+	Title:            "Mixfood Auth API",
+	Description:      "API для авторизации и профиля",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

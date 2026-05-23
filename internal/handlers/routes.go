@@ -1,15 +1,21 @@
 package handlers
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"github.com/gofiber/fiber/v3"
+)
 
-func (uh *usersHandler) RegisterRoutes(app *fiber.App) {
-	auth := app.Group("/api/auth")
+func (uh *usersHandler) RegisterRoutes(app fiber.Router) {
+	api := app.Group("/api")
 
-	auth.Post("/register", fiber.Handler(uh.register))
-	auth.Post("/login", fiber.Handler(uh.login))
-	auth.Post("/logout", fiber.Handler(uh.logout))
-	auth.Get("/refresh", fiber.Handler(uh.refresh))
-
-	users := app.Group("/api/users", fiber.Handler(uh.AuthMiddleware()))
-	users.Get("/me", fiber.Handler(uh.getMyProfile))
+	auth := api.Group("/auth")
+	auth.Post("/register", uh.register)
+	auth.Post("/login", uh.login)
+	auth.Get("/refresh", uh.refresh)
+	//
+	protected := api.Group("/", uh.AuthMiddleware())
+	protected.Post("/auth/logout", uh.logout)
+	protected.Get("/users/me", uh.getMyProfile)
+	protected.Put("/users/me", uh.updateProfile)
+	protected.Post("/addresses", uh.createAddress)
+	protected.Get("/addresses", uh.getMyAddresses)
 }

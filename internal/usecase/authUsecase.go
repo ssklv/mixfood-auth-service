@@ -55,34 +55,57 @@ func (au *authUsecase) generateTokenPair(ctx context.Context, user *domain.User)
 }
 
 func (au *authUsecase) Register(ctx context.Context, phone, password, name string) (string, string, error) {
-	existingUser, _ := au.userRepo.GetUserByPhone(ctx, phone)
+	if err := validatePhone(phone); err != nil {
+		return "", "", err
+	}
+	if err := validatePassword(password); err != nil {
+		return "", "", err
+	}
+	if err := validateName(name); err != nil {
+		return "", "", err
+	}
+
+	existingUser, err := au.userRepo.GetUserByPhone(ctx, phone)
+	if err != nil {
+		return "", "", err
+	}
 	if existingUser != nil {
 		return "", "", ErrUserAlreadyExists
 	}
+
 	hashedPassword, err := au.passwordHasher.HashPassword(password)
 	if err != nil {
 		return "", "", err
 	}
+
 	user := &domain.User{
 		Phone:        phone,
+		Email:        "",
 		PasswordHash: hashedPassword,
 		Name:         name,
 		Role:         domain.RoleUser,
 	}
+
 	if err := au.userRepo.CreateUser(ctx, user); err != nil {
 		return "", "", err
 	}
+
 	return au.generateTokenPair(ctx, user)
 }
 
 func (au *authUsecase) Login(ctx context.Context, phone, password string) (string, string, error) {
 	user, err := au.userRepo.GetUserByPhone(ctx, phone)
+
 	if err != nil {
+		return "", "", err
+	}
+	if user == nil {
 		return "", "", ErrInvalidCredentials
 	}
 	if err := au.passwordHasher.CompareHashAndPassword(user.PasswordHash, password); err != nil {
 		return "", "", ErrInvalidCredentials
 	}
+
 	return au.generateTokenPair(ctx, user)
 }
 

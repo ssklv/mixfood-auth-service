@@ -21,7 +21,7 @@ func getEnv(key, defaultValue string) string {
 }
 
 func Load() *Config {
-	jwtSecret := os.Getenv("JWT_SECRET") // Используем os.Getenv напрямую для обязательных полей
+	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		panic("JWT_SECRET is required")
 	}

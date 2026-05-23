@@ -1,1 +1,1 @@
-CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
+DROP INDEX IF EXISTS idx_users_phone;

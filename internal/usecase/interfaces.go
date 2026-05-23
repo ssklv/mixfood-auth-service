@@ -27,6 +27,7 @@ type SessionRepository interface {
 	DeleteSession(ctx context.Context, refreshToken string) error
 }
 
+// /
 type AuthUsecase interface {
 	Register(ctx context.Context, phone, password, name string) (string, string, error)
 	Login(ctx context.Context, phone, password string) (string, string, error)

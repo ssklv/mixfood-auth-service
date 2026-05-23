@@ -2,6 +2,7 @@ CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     phone VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(255) NOT NULL DEFAULT 'user',
     created_at TIMESTAMPTZ DEFAULT NOW(),

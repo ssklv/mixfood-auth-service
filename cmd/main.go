@@ -1,12 +1,11 @@
 package main
 
+//72345671889
 import (
 	"fmt"
-	"net/http"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/joho/godotenv"
 
@@ -15,6 +14,8 @@ import (
 	"github.com/ssklv/mixfood-auth-service/internal/infrastructure"
 	"github.com/ssklv/mixfood-auth-service/internal/usecase"
 	"github.com/ssklv/pizza-shared/pkg/logger"
+
+	_ "github.com/ssklv/mixfood-auth-service/docs"
 )
 
 type zapAdapter struct{}
@@ -22,15 +23,11 @@ type zapAdapter struct{}
 func (za *zapAdapter) Error(msg string, fields ...any) { logger.Logger.Error(msg) }
 func (za *zapAdapter) Warn(msg string, fields ...any)  { logger.Logger.Warn(msg) }
 
-// @title MixFood Auth Service API
-// @version 1.0
-// @description Сервис аутентификации для доставки еды
-// @host localhost:8080
 // @BasePath /
-
-// @securityDefinitions.apikey ApiKeyAuth
-// @in cookie
-// @name access_token
+// @title Mixfood Auth API
+// @version 1.0
+// @description API для авторизации и профиля
+// @host localhost:8080
 func main() {
 	logger.InitLogger()
 	defer logger.Logger.Sync()
@@ -46,13 +43,28 @@ func main() {
 		AppName: "MixFood Auth Service v1.0",
 	})
 
-	app.Get("/docs/*", adaptor.HTTPHandler(http.StripPrefix("/docs/", http.FileServer(http.Dir("./docs")))))
-
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowCredentials: true,
-		AllowHeaders:     []string{"Content-Type", "Authorization"},
 	}))
+
+	app.Get("/swagger/", func(c fiber.Ctx) error {
+		c.Set("Content-Type", "text/html")
+		return c.SendString(`<!DOCTYPE html>
+<html>
+<head><link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css"></head>
+<body><div id="swagger-ui"></div>
+<script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+<script>
+SwaggerUIBundle({url: "/swagger/doc.json", dom_id: '#swagger-ui'});
+</script></body></html>`)
+	})
+
+	app.Get("/swagger/doc.json", func(c fiber.Ctx) error {
+		return c.SendFile("./docs/swagger.json")
+	})
 
 	conn, err := infrastructure.Connect(cfg.DatabaseURL)
 	if err != nil {
@@ -62,21 +74,13 @@ func main() {
 
 	tokenProvider := infrastructure.NewTokenProvider(cfg.JWTSecret, cfg.AccessTTL)
 	passwordHasher := infrastructure.NewPasswordHasher()
-
 	userRepo := infrastructure.NewUserRepository(conn, psql)
 	sessionRepo := infrastructure.NewSessionRepository(conn, psql)
 	addressRepo := infrastructure.NewAddressRepository(conn, psql)
 
-	authUsecase := usecase.NewAuthUsecase(
-		sessionRepo,
-		userRepo,
-		addressRepo,
-		tokenProvider,
-		passwordHasher,
-	)
+	authUsecase := usecase.NewAuthUsecase(sessionRepo, userRepo, addressRepo, tokenProvider, passwordHasher)
 
-	logAdapter := &zapAdapter{}
-	authHandler := handlers.NewUsersHandler(authUsecase, tokenProvider, logAdapter)
+	authHandler := handlers.NewUsersHandler(authUsecase, tokenProvider, &zapAdapter{})
 	authHandler.RegisterRoutes(app)
 
 	logger.Logger.Info(fmt.Sprintf("Сервер стартовал на :%s", cfg.ServerPort))

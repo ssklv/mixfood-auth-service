@@ -7,7 +7,7 @@ import (
 type UserRole string
 
 const (
-	RoleUser  UserRole = "user" //client
+	RoleUser  UserRole = "user"
 	RoleAdmin UserRole = "admin"
 )
 

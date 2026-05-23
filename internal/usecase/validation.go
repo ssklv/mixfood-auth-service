@@ -44,6 +44,7 @@ func validateName(name string) error {
 	return nil
 }
 
+// /
 func validateEmail(email string) error {
 	if email == "" || len(email) > maxEmailLen {
 		return ErrInvalidEmail

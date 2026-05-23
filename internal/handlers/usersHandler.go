@@ -16,7 +16,7 @@ type Logger interface {
 }
 
 type UsersHandler interface {
-	RegisterRoutes(app *fiber.App)
+	RegisterRoutes(app fiber.Router)
 }
 
 type usersHandler struct {

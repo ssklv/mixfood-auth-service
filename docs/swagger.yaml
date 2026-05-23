@@ -1,5 +1,31 @@
 basePath: /
 definitions:
+  domain.Address:
+    properties:
+      apartment:
+        type: string
+      door_code:
+        type: string
+      entrance:
+        type: string
+      floor:
+        type: string
+      id:
+        type: integer
+      street_house:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  domain.UpdateUserParams:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+    type: object
   domain.User:
     properties:
       createdAt:
@@ -22,11 +48,6 @@ definitions:
     - user
     - admin
     type: string
-    x-enum-comments:
-      RoleUser: client
-    x-enum-descriptions:
-    - client
-    - ""
     x-enum-varnames:
     - RoleUser
     - RoleAdmin
@@ -54,8 +75,8 @@ definitions:
 host: localhost:8080
 info:
   contact: {}
-  description: Сервис аутентификации для доставки еды
-  title: MixFood Auth Service API
+  description: API для авторизации и профиля
+  title: Mixfood Auth API
   version: "1.0"
 paths:
   /api/auth/login:
@@ -128,13 +149,79 @@ paths:
       summary: Регистрация
       tags:
       - Auth
+  /api/user/address:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные адреса
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Address'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Создать адрес
+      tags:
+      - User
+  /api/user/addresses:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Address'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Получить мои адреса
+      tags:
+      - User
+  /api/user/profile:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/domain.UpdateUserParams'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.User'
+      summary: Обновить профиль
+      tags:
+      - User
   /api/users/me:
     get:
       produces:
       - application/json
       responses:
         "200":
-          description: Данные профиля
+          description: OK
           schema:
             $ref: '#/definitions/domain.User'
         "401":
@@ -150,9 +237,4 @@ paths:
       summary: Получить профиль пользователя
       tags:
       - Profile
-securityDefinitions:
-  ApiKeyAuth:
-    in: cookie
-    name: access_token
-    type: apiKey
 swagger: "2.0"

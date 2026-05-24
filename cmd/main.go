@@ -30,14 +30,14 @@ func (za *zapAdapter) Warn(msg string, fields ...any) {
 	}
 }
 
-// @title Menu Service API
+// @title Mixfood Auth Service API
 // @version 1.0
-// @description API для управления меню
-// @host localhost:8082
+// @description API для аутентификации и работы с пользователями
+// @host localhost:8080
 // @BasePath /
-// @securityDefinitions.apikey BearerAuth
-// @in header
-// @name Authorization
+// @securityDefinitions.apikey CookieAuth
+// @in cookie
+// @name jwt
 func main() {
 	logger.InitLogger()
 	if logger.Logger != nil {

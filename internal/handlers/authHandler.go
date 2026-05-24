@@ -222,6 +222,7 @@ func (uh *usersHandler) clearAuthCookies(c fiber.Ctx) {
 		Name:     AccessCookie,
 		Value:    "",
 		Path:     "/",
+		Domain:   "localhost",
 		Expires:  time.Now().Add(-time.Hour),
 		HTTPOnly: true,
 		Secure:   false,

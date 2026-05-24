@@ -34,7 +34,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.loginReq"
+                            "$ref": "#/definitions/internal_handlers.loginReq"
                         }
                     }
                 ],
@@ -45,7 +45,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -77,7 +77,7 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -102,7 +102,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.registerReq"
+                            "$ref": "#/definitions/internal_handlers.registerReq"
                         }
                     }
                 ],
@@ -113,13 +113,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -144,7 +144,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/domain.Address"
+                            "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address"
                         }
                     }
                 ],
@@ -155,13 +155,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -182,14 +182,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/domain.Address"
+                                "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -214,7 +214,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/domain.UpdateUserParams"
+                            "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.UpdateUserParams"
                         }
                     }
                 ],
@@ -222,13 +222,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.User"
+                            "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.User"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -252,19 +252,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.User"
+                            "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.User"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -272,7 +272,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "domain.Address": {
+        "github_com_ssklv_mixfood-auth-service_internal_domain.Address": {
             "type": "object",
             "properties": {
                 "apartment": {
@@ -298,7 +298,7 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.UpdateUserParams": {
+        "github_com_ssklv_mixfood-auth-service_internal_domain.UpdateUserParams": {
             "type": "object",
             "properties": {
                 "email": {
@@ -312,7 +312,7 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.User": {
+        "github_com_ssklv_mixfood-auth-service_internal_domain.User": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -331,14 +331,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "role": {
-                    "$ref": "#/definitions/domain.UserRole"
+                    "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.UserRole"
                 },
                 "updatedAt": {
                     "type": "string"
                 }
             }
         },
-        "domain.UserRole": {
+        "github_com_ssklv_mixfood-auth-service_internal_domain.UserRole": {
             "type": "string",
             "enum": [
                 "user",
@@ -349,7 +349,7 @@ const docTemplate = `{
                 "RoleAdmin"
             ]
         },
-        "handlers.ErrorResponse": {
+        "internal_handlers.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -357,7 +357,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.loginReq": {
+        "internal_handlers.loginReq": {
             "type": "object",
             "properties": {
                 "password": {
@@ -368,7 +368,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.registerReq": {
+        "internal_handlers.registerReq": {
             "type": "object",
             "properties": {
                 "name": {
@@ -384,10 +384,10 @@ const docTemplate = `{
         }
     },
     "securityDefinitions": {
-        "BearerAuth": {
+        "CookieAuth": {
             "type": "apiKey",
-            "name": "Authorization",
-            "in": "header"
+            "name": "jwt",
+            "in": "cookie"
         }
     }
 }`
@@ -395,11 +395,11 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8082",
+	Host:             "localhost:8080",
 	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "Menu Service API",
-	Description:      "API для управления меню",
+	Title:            "Mixfood Auth Service API",
+	Description:      "API для аутентификации и работы с пользователями",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

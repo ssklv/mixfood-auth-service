@@ -1,6 +1,6 @@
 basePath: /
 definitions:
-  domain.Address:
+  github_com_ssklv_mixfood-auth-service_internal_domain.Address:
     properties:
       apartment:
         type: string
@@ -17,7 +17,7 @@ definitions:
       user_id:
         type: integer
     type: object
-  domain.UpdateUserParams:
+  github_com_ssklv_mixfood-auth-service_internal_domain.UpdateUserParams:
     properties:
       email:
         type: string
@@ -26,7 +26,7 @@ definitions:
       phone:
         type: string
     type: object
-  domain.User:
+  github_com_ssklv_mixfood-auth-service_internal_domain.User:
     properties:
       createdAt:
         type: string
@@ -39,11 +39,11 @@ definitions:
       phone:
         type: string
       role:
-        $ref: '#/definitions/domain.UserRole'
+        $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.UserRole'
       updatedAt:
         type: string
     type: object
-  domain.UserRole:
+  github_com_ssklv_mixfood-auth-service_internal_domain.UserRole:
     enum:
     - user
     - admin
@@ -51,19 +51,19 @@ definitions:
     x-enum-varnames:
     - RoleUser
     - RoleAdmin
-  handlers.ErrorResponse:
+  internal_handlers.ErrorResponse:
     properties:
       error:
         type: string
     type: object
-  handlers.loginReq:
+  internal_handlers.loginReq:
     properties:
       password:
         type: string
       phone:
         type: string
     type: object
-  handlers.registerReq:
+  internal_handlers.registerReq:
     properties:
       name:
         type: string
@@ -72,11 +72,11 @@ definitions:
       phone:
         type: string
     type: object
-host: localhost:8082
+host: localhost:8080
 info:
   contact: {}
-  description: API для управления меню
-  title: Menu Service API
+  description: API для аутентификации и работы с пользователями
+  title: Mixfood Auth Service API
   version: "1.0"
 paths:
   /api/auth/login:
@@ -89,7 +89,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/handlers.loginReq'
+          $ref: '#/definitions/internal_handlers.loginReq'
       produces:
       - application/json
       responses:
@@ -98,7 +98,7 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       summary: Логин
       tags:
       - Auth
@@ -118,7 +118,7 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       summary: Обновление токенов
       tags:
       - Auth
@@ -132,7 +132,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/handlers.registerReq'
+          $ref: '#/definitions/internal_handlers.registerReq'
       produces:
       - application/json
       responses:
@@ -141,11 +141,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       summary: Регистрация
       tags:
       - Auth
@@ -159,7 +159,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/domain.Address'
+          $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address'
       produces:
       - application/json
       responses:
@@ -168,11 +168,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       summary: Создать адрес
       tags:
       - User
@@ -185,12 +185,12 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/domain.Address'
+              $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address'
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       summary: Получить мои адреса
       tags:
       - User
@@ -204,18 +204,18 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/domain.UpdateUserParams'
+          $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.UpdateUserParams'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.User'
+            $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.User'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       summary: Обновить профиль
       tags:
       - User
@@ -227,23 +227,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.User'
+            $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.User'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_handlers.ErrorResponse'
       security:
       - ApiKeyAuth: []
       summary: Получить профиль пользователя
       tags:
       - Profile
 securityDefinitions:
-  BearerAuth:
-    in: header
-    name: Authorization
+  CookieAuth:
+    in: cookie
+    name: jwt
     type: apiKey
 swagger: "2.0"

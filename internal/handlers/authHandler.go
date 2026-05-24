@@ -19,6 +19,7 @@ type loginReq struct {
 	Phone    string `json:"phone"`
 	Password string `json:"password"`
 }
+
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
@@ -43,6 +44,9 @@ func (uh *usersHandler) register(c fiber.Ctx) error {
 		uh.log.Error("Registration error:", "err", err.Error())
 		if errors.Is(err, usecase.ErrUserAlreadyExists) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Этот номер телефона уже зарегистрирован"})
+		}
+		if errors.Is(err, usecase.ErrInvalidPhone) || errors.Is(err, usecase.ErrInvalidName) || errors.Is(err, usecase.ErrInvalidPasswordTooWeak) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal error"})
 	}
@@ -79,7 +83,6 @@ func (uh *usersHandler) login(c fiber.Ctx) error {
 
 	uh.setAuthCookies(c, accessToken, refreshToken)
 
-	// Возвращаем токен для фронтенда
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"accessToken": accessToken,
 	})
@@ -117,7 +120,10 @@ func (uh *usersHandler) refresh(c fiber.Ctx) error {
 	accessToken, newRefreshToken, err := uh.usecase.RefreshTokens(c.Context(), oldRefreshToken)
 	if err != nil {
 		uh.log.Warn("token refresh failed", err)
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "session expired or invalid"})
+		if errors.Is(err, usecase.ErrSessionExpired) {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "session expired"})
+		}
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "session not found or invalid"})
 	}
 
 	uh.setAuthCookies(c, accessToken, newRefreshToken)
@@ -130,18 +136,22 @@ func (uh *usersHandler) refresh(c fiber.Ctx) error {
 // @Produce json
 // @Param input body domain.UpdateUserParams true "Данные"
 // @Success 200 {object} domain.User
+// @Failure 400 {object} ErrorResponse
 // @Router /api/user/profile [patch]
 func (uh *usersHandler) updateProfile(c fiber.Ctx) error {
 	userID := c.Locals("userID").(int64)
 	var params domain.UpdateUserParams
 	if err := c.Bind().Body(&params); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
 	}
 
 	params.ID = userID
 	user, err := uh.usecase.UpdateProfile(c.Context(), &params)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "failed to update profile"})
+		if errors.Is(err, usecase.ErrInvalidPhone) || errors.Is(err, usecase.ErrInvalidName) || errors.Is(err, usecase.ErrInvalidEmail) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to update profile"})
 	}
 	return c.JSON(user)
 }
@@ -159,14 +169,17 @@ func (uh *usersHandler) createAddress(c fiber.Ctx) error {
 	userID := c.Locals("userID").(int64)
 	var addr domain.Address
 	if err := c.Bind().Body(&addr); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
 	}
 
 	addr.UserID = userID
 	if err := uh.usecase.CreateAddress(c.Context(), &addr); err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "failed to create address"})
+		if errors.Is(err, usecase.ErrInvalidAddress) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create address"})
 	}
-	return c.SendStatus(201)
+	return c.SendStatus(fiber.StatusCreated)
 }
 
 // @Summary Получить мои адреса
@@ -183,17 +196,6 @@ func (uh *usersHandler) getMyAddresses(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal error"})
 	}
 	return c.JSON(addresses)
-}
-
-func (uh *usersHandler) getAccessToken(c fiber.Ctx) string {
-	// 1. Проверяем заголовок Authorization (для твоего Axios-клиента)
-	authHeader := c.Get("Authorization")
-	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
-		return authHeader[7:]
-	}
-
-	// 2. Если заголовка нет, пробуем взять из куки (для старой логики)
-	return c.Cookies(AccessCookie)
 }
 
 func (uh *usersHandler) setAuthCookies(c fiber.Ctx, accessToken, refreshToken string) {

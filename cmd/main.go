@@ -1,6 +1,5 @@
 package main
 
-//72345671889
 import (
 	"fmt"
 
@@ -20,8 +19,16 @@ import (
 
 type zapAdapter struct{}
 
-func (za *zapAdapter) Error(msg string, fields ...any) { logger.Logger.Error(msg) }
-func (za *zapAdapter) Warn(msg string, fields ...any)  { logger.Logger.Warn(msg) }
+func (za *zapAdapter) Error(msg string, fields ...any) {
+	if logger.Logger != nil {
+		logger.Logger.Error(fmt.Sprintf(msg+" %v", fields))
+	}
+}
+func (za *zapAdapter) Warn(msg string, fields ...any) {
+	if logger.Logger != nil {
+		logger.Logger.Warn(fmt.Sprintf(msg+" %v", fields))
+	}
+}
 
 // @BasePath /
 // @title Mixfood Auth API
@@ -30,10 +37,14 @@ func (za *zapAdapter) Warn(msg string, fields ...any)  { logger.Logger.Warn(msg)
 // @host localhost:8080
 func main() {
 	logger.InitLogger()
-	defer logger.Logger.Sync()
+	if logger.Logger != nil {
+		defer logger.Logger.Sync()
+	}
 
 	if err := godotenv.Load(); err != nil {
-		logger.Logger.Warn("Файл .env не найден")
+		if logger.Logger != nil {
+			logger.Logger.Warn("Файл .env не найден")
+		}
 	}
 
 	cfg := config.Load()
@@ -53,13 +64,13 @@ func main() {
 	app.Get("/swagger/", func(c fiber.Ctx) error {
 		c.Set("Content-Type", "text/html")
 		return c.SendString(`<!DOCTYPE html>
-<html>
-<head><link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css"></head>
-<body><div id="swagger-ui"></div>
-<script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
-<script>
-SwaggerUIBundle({url: "/swagger/doc.json", dom_id: '#swagger-ui'});
-</script></body></html>`)
+            <html>
+            <head><link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css"></head>
+            <body><div id="swagger-ui"></div>
+            <script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+            <script>
+            SwaggerUIBundle({url: "/swagger/doc.json", dom_id: '#swagger-ui'});
+            </script></body></html>`)
 	})
 
 	app.Get("/swagger/doc.json", func(c fiber.Ctx) error {
@@ -68,7 +79,9 @@ SwaggerUIBundle({url: "/swagger/doc.json", dom_id: '#swagger-ui'});
 
 	conn, err := infrastructure.Connect(cfg.DatabaseURL)
 	if err != nil {
-		logger.Logger.Fatal("Ошибка БД: " + err.Error())
+		if logger.Logger != nil {
+			logger.Logger.Fatal("Ошибка БД: " + err.Error())
+		}
 	}
 	defer conn.Close()
 
@@ -83,8 +96,13 @@ SwaggerUIBundle({url: "/swagger/doc.json", dom_id: '#swagger-ui'});
 	authHandler := handlers.NewUsersHandler(authUsecase, tokenProvider, &zapAdapter{})
 	authHandler.RegisterRoutes(app)
 
-	logger.Logger.Info(fmt.Sprintf("Сервер стартовал на :%s", cfg.ServerPort))
+	if logger.Logger != nil {
+		logger.Logger.Info(fmt.Sprintf("Сервер стартовал на :%s", cfg.ServerPort))
+	}
+
 	if err := app.Listen(":" + cfg.ServerPort); err != nil {
-		logger.Logger.Fatal("Сервер упал: " + err.Error())
+		if logger.Logger != nil {
+			logger.Logger.Fatal("Сервер упал: " + err.Error())
+		}
 	}
 }

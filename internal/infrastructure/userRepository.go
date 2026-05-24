@@ -13,7 +13,14 @@ import (
 )
 
 var userCols = []string{
-	"id", "name", "phone", "email", "password_hash", "role", "created_at", "updated_at",
+	"id",
+	"name",
+	"phone",
+	"email",
+	"password_hash",
+	"role",
+	"created_at",
+	"updated_at",
 }
 
 type usersRepository struct {
@@ -25,20 +32,22 @@ func NewUserRepository(db *pgxpool.Pool, psql sq.StatementBuilderType) *usersRep
 	return &usersRepository{db: db, psql: psql}
 }
 
+// без почты
 func (r *usersRepository) CreateUser(ctx context.Context, user *domain.User) error {
-	builder := r.psql.Insert("users").
-		Columns("name", "phone", "password_hash", "role", "created_at", "updated_at")
-
+	columns := []string{"name", "phone", "password_hash", "role", "created_at", "updated_at"}
 	values := []interface{}{user.Name, user.Phone, user.PasswordHash, user.Role, time.Now(), time.Now()}
 
-	// Если email передан — добавляем его в запрос
 	if user.Email != "" {
-		builder = builder.Columns("email")
+		columns = append(columns, "email")
 		values = append(values, user.Email)
 	}
 
-	sql, args, err := builder.Values(values...).
-		Suffix("RETURNING " + strings.Join(userCols, ", ")).ToSql()
+	sql, args, err := r.psql.
+		Insert("users").
+		Columns(columns...).
+		Values(values...).
+		Suffix("RETURNING " + strings.Join(userCols, ", ")).
+		ToSql()
 	if err != nil {
 		return err
 	}
@@ -47,7 +56,11 @@ func (r *usersRepository) CreateUser(ctx context.Context, user *domain.User) err
 }
 
 func (r *usersRepository) GetUserByID(ctx context.Context, id int64) (*domain.User, error) {
-	sql, args, err := r.psql.Select(userCols...).From("users").Where(sq.Eq{"id": id}).ToSql()
+	sql, args, err := r.psql.
+		Select(userCols...).
+		From("users").
+		Where(sq.Eq{"id": id}).
+		ToSql()
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +99,9 @@ func (r *usersRepository) GetUserByPhone(ctx context.Context, phone string) (*do
 }
 
 func (r *usersRepository) UpdateUser(ctx context.Context, params *domain.UpdateUserParams) (*domain.User, error) {
-	builder := r.psql.Update("users").Set("updated_at", time.Now())
+	builder := r.psql.
+		Update("users").
+		Set("updated_at", time.Now())
 
 	if params.Name != nil {
 		builder = builder.Set("name", *params.Name)
@@ -95,7 +110,6 @@ func (r *usersRepository) UpdateUser(ctx context.Context, params *domain.UpdateU
 		builder = builder.Set("phone", *params.Phone)
 	}
 	if params.Email != nil {
-		// Если передали пустую строку, возможно, стоит разрешить ставить NULL
 		builder = builder.Set("email", *params.Email)
 	}
 
@@ -110,7 +124,10 @@ func (r *usersRepository) UpdateUser(ctx context.Context, params *domain.UpdateU
 }
 
 func (r *usersRepository) DeleteUser(ctx context.Context, id int64) error {
-	sql, args, err := r.psql.Delete("users").Where(sq.Eq{"id": id}).ToSql()
+	sql, args, err := r.psql.
+		Delete("users").
+		Where(sq.Eq{"id": id}).
+		ToSql()
 	if err != nil {
 		return err
 	}

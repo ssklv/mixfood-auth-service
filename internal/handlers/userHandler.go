@@ -11,23 +11,19 @@ import (
 
 func (uh *usersHandler) AuthMiddleware() fiber.Handler {
 	return func(c fiber.Ctx) error {
-		// 1. Пытаемся взять токен из заголовка (для React/Axios)
 		token := c.Get("Authorization")
 		if len(token) > 7 && token[:7] == "Bearer " {
-			token = token[7:] // Отрезаем "Bearer "
+			token = token[7:]
 		} else {
-			// 2. Если заголовка нет, пробуем старый метод — через куки
 			token = c.Cookies(AccessCookie)
 		}
 
 		fmt.Printf("DEBUG: Middleware получил токен: '%s'\n", token)
 
-		// 3. Если токена нет вообще — ошибка 401
 		if token == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
 		}
 
-		// 4. Валидация токена
 		userID, role, err := uh.tokenProvider.ParseToken(token)
 		if err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token"})

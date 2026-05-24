@@ -116,17 +116,41 @@ func (au *authUsecase) Logout(ctx context.Context, refreshToken string) error {
 func (au *authUsecase) RefreshTokens(ctx context.Context, refreshToken string) (string, string, error) {
 	session, err := au.authRepo.GetSessionByToken(ctx, refreshToken)
 	if err != nil {
-		return "", "", err
+		return "", "", ErrSessionNotFound
 	}
+
+	// Защита от использования просроченных refresh-токенов
+	if time.Now().After(session.ExpiresAt) {
+		_ = au.authRepo.DeleteSession(ctx, refreshToken)
+		return "", "", ErrSessionExpired
+	}
+
 	user, err := au.userRepo.GetUserByID(ctx, session.UserID)
 	if err != nil {
 		return "", "", err
 	}
+
 	_ = au.authRepo.DeleteSession(ctx, refreshToken)
 	return au.generateTokenPair(ctx, user)
 }
 
 func (au *authUsecase) UpdateProfile(ctx context.Context, params *domain.UpdateUserParams) (*domain.User, error) {
+	if params.Name != nil {
+		if err := validateName(*params.Name); err != nil {
+			return nil, err
+		}
+	}
+	if params.Phone != nil {
+		if err := validatePhone(*params.Phone); err != nil {
+			return nil, err
+		}
+	}
+	if params.Email != nil {
+		if err := validateEmail(*params.Email); err != nil {
+			return nil, err
+		}
+	}
+
 	return au.userRepo.UpdateUser(ctx, params)
 }
 
@@ -135,6 +159,9 @@ func (au *authUsecase) GetUserByID(ctx context.Context, id int64) (*domain.User,
 }
 
 func (au *authUsecase) CreateAddress(ctx context.Context, addr *domain.Address) error {
+	if err := validateAddress(addr.StreetHouse); err != nil {
+		return err
+	}
 	return au.addressRepo.CreateAddress(ctx, addr)
 }
 
@@ -143,6 +170,9 @@ func (au *authUsecase) GetAddresses(ctx context.Context, userID int64) ([]domain
 }
 
 func (au *authUsecase) UpdateAddress(ctx context.Context, addr *domain.Address) error {
+	if err := validateAddress(addr.StreetHouse); err != nil {
+		return err
+	}
 	return au.addressRepo.UpdateAddress(ctx, addr)
 }
 

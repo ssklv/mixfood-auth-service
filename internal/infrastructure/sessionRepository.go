@@ -22,7 +22,7 @@ func (r *sessionsRepository) SaveSession(ctx context.Context, session *domain.Us
 		Insert("sessions").
 		Columns("user_id", "refresh_token", "expires_at").
 		Values(session.UserID, session.RefreshToken, session.ExpiresAt).
-		Suffix("ON CONFLICT (user_id) DO UPDATE SET refresh_token = EXCLUDED.refresh_token, expires_at = EXCLUDED.expires_at").ToSql()
+		ToSql()
 	if err != nil {
 		return err
 	}

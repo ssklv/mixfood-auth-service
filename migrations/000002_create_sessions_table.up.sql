@@ -1,5 +1,6 @@
-CREATE TABLE sessions (
-    user_id       BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    refresh_token TEXT NOT NULL,
-    expires_at    TIMESTAMPTZ NOT NULL
+CREATE TABLE IF NOT EXISTS sessions (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    refresh_token TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL
 );

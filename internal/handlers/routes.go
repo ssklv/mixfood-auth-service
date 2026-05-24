@@ -11,11 +11,12 @@ func (uh *usersHandler) RegisterRoutes(app fiber.Router) {
 	auth.Post("/register", uh.register)
 	auth.Post("/login", uh.login)
 	auth.Get("/refresh", uh.refresh)
-	//
+
 	protected := api.Group("/", uh.AuthMiddleware())
 	protected.Post("/auth/logout", uh.logout)
+
 	protected.Get("/users/me", uh.getMyProfile)
-	protected.Put("/users/me", uh.updateProfile)
-	protected.Post("/addresses", uh.createAddress)
-	protected.Get("/addresses", uh.getMyAddresses)
+	protected.Patch("/user/profile", uh.updateProfile)
+	protected.Post("/user/address", uh.createAddress)
+	protected.Get("/user/addresses", uh.getMyAddresses)
 }

@@ -30,11 +30,14 @@ func (za *zapAdapter) Warn(msg string, fields ...any) {
 	}
 }
 
-// @BasePath /
-// @title Mixfood Auth API
+// @title Menu Service API
 // @version 1.0
-// @description API для авторизации и профиля
-// @host localhost:8080
+// @description API для управления меню
+// @host localhost:8082
+// @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	logger.InitLogger()
 	if logger.Logger != nil {
@@ -53,9 +56,9 @@ func main() {
 	app := fiber.New(fiber.Config{
 		AppName: "MixFood Auth Service v1.0",
 	})
-
+	//http://localhost:8080/swagger/
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowOrigins:     []string{"http://localhost:8080"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowCredentials: true,

@@ -72,11 +72,11 @@ definitions:
       phone:
         type: string
     type: object
-host: localhost:8080
+host: localhost:8082
 info:
   contact: {}
-  description: API для авторизации и профиля
-  title: Mixfood Auth API
+  description: API для управления меню
+  title: Menu Service API
   version: "1.0"
 paths:
   /api/auth/login:
@@ -212,6 +212,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/domain.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       summary: Обновить профиль
       tags:
       - User
@@ -237,4 +241,9 @@ paths:
       summary: Получить профиль пользователя
       tags:
       - Profile
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

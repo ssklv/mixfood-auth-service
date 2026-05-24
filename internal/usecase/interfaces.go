@@ -39,7 +39,7 @@ type AuthUsecase interface {
 	GetUserByID(ctx context.Context, id int64) (*domain.User, error)
 	UpdateProfile(ctx context.Context, params *domain.UpdateUserParams) (*domain.User, error)
 
-	//адресс
+	//адрес
 	CreateAddress(ctx context.Context, addr *domain.Address) error
 	GetAddresses(ctx context.Context, userID int64) ([]domain.Address, error)
 	UpdateAddress(ctx context.Context, addr *domain.Address) error

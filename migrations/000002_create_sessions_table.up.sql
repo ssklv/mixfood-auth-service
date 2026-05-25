@@ -4,3 +4,5 @@ CREATE TABLE IF NOT EXISTS sessions (
     refresh_token TEXT NOT NULL UNIQUE,
     expires_at TIMESTAMPTZ NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);

@@ -1,14 +1,20 @@
 package infrastructure
 
-import (
-	"errors"
-)
+import "errors"
 
 var (
-	ErrUserNotFound   = errors.New("user not found")
-	ErrNoChanges      = errors.New("no changes provided")
-	ErrDuplicatePhone = errors.New("duplicate phone")
-	ErrDuplicateEmail = errors.New("duplicate email")
+	//для бд и профилей юзеров
+	ErrUserNotFound     = errors.New("user not found")
+	ErrDuplicatePhone   = errors.New("user with this phone number already exists")
+	ErrDuplicateEmail   = errors.New("this email is already taken")
+	ErrDatabaseInternal = errors.New("internal database error")
+
+	//аутентификая и профили
+	ErrInvalidToken     = errors.New("invalid or expired token")
+	ErrPasswordMismatch = errors.New("invalid phone number or password")
+	ErrSessionNotFound  = errors.New("session not found")
+
+	ErrAddressNotFound = errors.New("address not found")
 )
 
-//адрес в сервис с доставкой
+//адрес спросить

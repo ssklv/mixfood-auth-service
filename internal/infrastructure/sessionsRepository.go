@@ -2,22 +2,24 @@ package infrastructure
 
 import (
 	"context"
+	"errors"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ssklv/mixfood-auth-service/internal/domain"
 )
 
-type sessionsRepository struct {
+type SessionsRepository struct {
 	db   *pgxpool.Pool
 	psql sq.StatementBuilderType
 }
 
-func NewSessionRepository(db *pgxpool.Pool, psql sq.StatementBuilderType) *sessionsRepository {
-	return &sessionsRepository{db: db, psql: psql}
+func NewSessionRepository(db *pgxpool.Pool, psql sq.StatementBuilderType) *SessionsRepository {
+	return &SessionsRepository{db: db, psql: psql}
 }
 
-func (r *sessionsRepository) SaveSession(ctx context.Context, session *domain.UserSession) error {
+func (r *SessionsRepository) SaveSession(ctx context.Context, session *domain.UserSession) error {
 	sql, args, err := r.psql.
 		Insert("sessions").
 		Columns("user_id", "refresh_token", "expires_at").
@@ -27,10 +29,13 @@ func (r *sessionsRepository) SaveSession(ctx context.Context, session *domain.Us
 		return err
 	}
 	_, err = r.db.Exec(ctx, sql, args...)
-	return err
+	if err != nil {
+		return ErrDatabaseInternal
+	}
+	return nil
 }
 
-func (r *sessionsRepository) GetSessionByToken(ctx context.Context, token string) (*domain.UserSession, error) {
+func (r *SessionsRepository) GetSessionByToken(ctx context.Context, token string) (*domain.UserSession, error) {
 	sql, args, err := r.psql.
 		Select("user_id", "refresh_token", "expires_at").
 		From("sessions").
@@ -40,11 +45,17 @@ func (r *sessionsRepository) GetSessionByToken(ctx context.Context, token string
 		return nil, err
 	}
 	s := &domain.UserSession{}
-	return s, r.db.QueryRow(ctx, sql, args...).
-		Scan(&s.UserID, &s.RefreshToken, &s.ExpiresAt)
+	err = r.db.QueryRow(ctx, sql, args...).Scan(&s.UserID, &s.RefreshToken, &s.ExpiresAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrSessionNotFound
+		}
+		return nil, ErrDatabaseInternal
+	}
+	return s, nil
 }
 
-func (r *sessionsRepository) DeleteSession(ctx context.Context, token string) error {
+func (r *SessionsRepository) DeleteSession(ctx context.Context, token string) error {
 	sql, args, err := r.psql.
 		Delete("sessions").
 		Where(sq.Eq{"refresh_token": token}).
@@ -53,5 +64,8 @@ func (r *sessionsRepository) DeleteSession(ctx context.Context, token string) er
 		return err
 	}
 	_, err = r.db.Exec(ctx, sql, args...)
-	return err
+	if err != nil {
+		return ErrDatabaseInternal
+	}
+	return nil
 }

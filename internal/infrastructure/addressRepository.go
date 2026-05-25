@@ -2,22 +2,24 @@ package infrastructure
 
 import (
 	"context"
+	"errors"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ssklv/mixfood-auth-service/internal/domain"
 )
 
-type addressRepository struct {
+type AddressRepository struct {
 	db   *pgxpool.Pool
 	psql sq.StatementBuilderType
 }
 
-func NewAddressRepository(db *pgxpool.Pool, psql sq.StatementBuilderType) *addressRepository {
-	return &addressRepository{db: db, psql: psql}
+func NewAddressRepository(db *pgxpool.Pool, psql sq.StatementBuilderType) *AddressRepository {
+	return &AddressRepository{db: db, psql: psql}
 }
 
-func (r *addressRepository) CreateAddress(ctx context.Context, addr *domain.Address) error {
+func (r *AddressRepository) CreateAddress(ctx context.Context, addr *domain.Address) error {
 	sql, args, err := r.psql.
 		Insert("addresses").
 		Columns("user_id", "street_house", "apartment", "entrance", "floor", "door_code").
@@ -30,7 +32,28 @@ func (r *addressRepository) CreateAddress(ctx context.Context, addr *domain.Addr
 	return r.db.QueryRow(ctx, sql, args...).Scan(&addr.ID)
 }
 
-func (r *addressRepository) GetAddressesByUserID(ctx context.Context, userID int64) ([]domain.Address, error) {
+func (r *AddressRepository) GetAddressByID(ctx context.Context, id int64) (*domain.Address, error) {
+	sql, args, err := r.psql.
+		Select("id", "user_id", "street_house", "apartment", "entrance", "floor", "door_code").
+		From("addresses").
+		Where(sq.Eq{"id": id}).
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	var a domain.Address
+	err = r.db.QueryRow(ctx, sql, args...).Scan(&a.ID, &a.UserID, &a.StreetHouse, &a.Apartment, &a.Entrance, &a.Floor, &a.DoorCode)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrAddressNotFound
+		}
+		return nil, ErrDatabaseInternal
+	}
+	return &a, nil
+}
+
+func (r *AddressRepository) GetAddressesByUserID(ctx context.Context, userID int64) ([]domain.Address, error) {
 	sql, args, err := r.psql.
 		Select("id", "user_id", "street_house", "apartment", "entrance", "floor", "door_code").
 		From("addresses").
@@ -45,18 +68,10 @@ func (r *addressRepository) GetAddressesByUserID(ctx context.Context, userID int
 	}
 	defer rows.Close()
 
-	var addrs []domain.Address
+	addrs := make([]domain.Address, 0)
 	for rows.Next() {
 		var a domain.Address
-		if err := rows.
-			Scan(
-				&a.ID,
-				&a.UserID,
-				&a.StreetHouse,
-				&a.Apartment,
-				&a.Entrance,
-				&a.Floor,
-				&a.DoorCode); err != nil {
+		if err := rows.Scan(&a.ID, &a.UserID, &a.StreetHouse, &a.Apartment, &a.Entrance, &a.Floor, &a.DoorCode); err != nil {
 			return nil, err
 		}
 		addrs = append(addrs, a)
@@ -64,19 +79,22 @@ func (r *addressRepository) GetAddressesByUserID(ctx context.Context, userID int
 	return addrs, nil
 }
 
-func (r *addressRepository) DeleteAddress(ctx context.Context, id int64) error {
-	sql, args, err := r.psql.
-		Delete("addresses").
-		Where(sq.Eq{"id": id}).
-		ToSql()
+func (r *AddressRepository) DeleteAddress(ctx context.Context, id int64) error {
+	sql, args, err := r.psql.Delete("addresses").Where(sq.Eq{"id": id}).ToSql()
 	if err != nil {
 		return err
 	}
-	_, err = r.db.Exec(ctx, sql, args...)
-	return err
+	res, err := r.db.Exec(ctx, sql, args...)
+	if err != nil {
+		return ErrDatabaseInternal
+	}
+	if res.RowsAffected() == 0 {
+		return ErrAddressNotFound
+	}
+	return nil
 }
 
-func (r *addressRepository) UpdateAddress(ctx context.Context, addr *domain.Address) error {
+func (r *AddressRepository) UpdateAddress(ctx context.Context, addr *domain.Address) error {
 	sql, args, err := r.psql.
 		Update("addresses").
 		Set("street_house", addr.StreetHouse).
@@ -89,6 +107,12 @@ func (r *addressRepository) UpdateAddress(ctx context.Context, addr *domain.Addr
 	if err != nil {
 		return err
 	}
-	_, err = r.db.Exec(ctx, sql, args...)
-	return err
+	res, err := r.db.Exec(ctx, sql, args...)
+	if err != nil {
+		return ErrDatabaseInternal
+	}
+	if res.RowsAffected() == 0 {
+		return ErrAddressNotFound
+	}
+	return nil
 }

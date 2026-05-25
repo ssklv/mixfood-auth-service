@@ -6,5 +6,7 @@ CREATE TABLE IF NOT EXISTS addresses (
     entrance VARCHAR(50),
     floor VARCHAR(50),
     door_code VARCHAR(50),
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_addresses_user_id ON addresses(user_id);

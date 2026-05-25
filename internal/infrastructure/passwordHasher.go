@@ -1,6 +1,8 @@
 package infrastructure
 
 import (
+	"errors"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -19,5 +21,12 @@ func (ph *passwordHasher) HashPassword(password string) (string, error) {
 }
 
 func (ph *passwordHasher) CompareHashAndPassword(hash, password string) error {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	if err != nil {
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			return ErrPasswordMismatch
+		}
+		return err
+	}
+	return nil
 }

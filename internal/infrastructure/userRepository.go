@@ -8,6 +8,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ssklv/mixfood-auth-service/internal/domain"
 )
@@ -23,17 +24,16 @@ var userCols = []string{
 	"updated_at",
 }
 
-type usersRepository struct {
+type UsersRepository struct {
 	db   *pgxpool.Pool
 	psql sq.StatementBuilderType
 }
 
-func NewUserRepository(db *pgxpool.Pool, psql sq.StatementBuilderType) *usersRepository {
-	return &usersRepository{db: db, psql: psql}
+func NewUserRepository(db *pgxpool.Pool, psql sq.StatementBuilderType) *UsersRepository {
+	return &UsersRepository{db: db, psql: psql}
 }
 
-// без почты
-func (r *usersRepository) CreateUser(ctx context.Context, user *domain.User) error {
+func (r *UsersRepository) CreateUser(ctx context.Context, user *domain.User) error {
 	columns := []string{"name", "phone", "password_hash", "role", "created_at", "updated_at"}
 	values := []interface{}{user.Name, user.Phone, user.PasswordHash, user.Role, time.Now(), time.Now()}
 
@@ -52,15 +52,26 @@ func (r *usersRepository) CreateUser(ctx context.Context, user *domain.User) err
 		return err
 	}
 
-	return scanUser(r.db.QueryRow(ctx, sql, args...), user)
+	err = scanUser(r.db.QueryRow(ctx, sql, args...), user)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		// 23505 — код ошибки Unique Violation в PostgreSQL
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			errStr := strings.ToLower(pgErr.Message + " " + pgErr.ConstraintName)
+			if strings.Contains(errStr, "phone") {
+				return ErrDuplicatePhone
+			}
+			if strings.Contains(errStr, "email") {
+				return ErrDuplicateEmail
+			}
+		}
+		return ErrDatabaseInternal
+	}
+	return nil
 }
 
-func (r *usersRepository) GetUserByID(ctx context.Context, id int64) (*domain.User, error) {
-	sql, args, err := r.psql.
-		Select(userCols...).
-		From("users").
-		Where(sq.Eq{"id": id}).
-		ToSql()
+func (r *UsersRepository) GetUserByID(ctx context.Context, id int64) (*domain.User, error) {
+	sql, args, err := r.psql.Select(userCols...).From("users").Where(sq.Eq{"id": id}).ToSql()
 	if err != nil {
 		return nil, err
 	}
@@ -71,37 +82,30 @@ func (r *usersRepository) GetUserByID(ctx context.Context, id int64) (*domain.Us
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
 		}
-		return nil, err
+		return nil, ErrDatabaseInternal
 	}
 	return user, nil
 }
 
-func (r *usersRepository) GetUserByPhone(ctx context.Context, phone string) (*domain.User, error) {
-	sql, args, err := r.psql.
-		Select(userCols...).
-		From("users").
-		Where(sq.Eq{"phone": phone}).
-		ToSql()
+func (r *UsersRepository) GetUserByPhone(ctx context.Context, phone string) (*domain.User, error) {
+	sql, args, err := r.psql.Select(userCols...).From("users").Where(sq.Eq{"phone": phone}).ToSql()
 	if err != nil {
 		return nil, err
 	}
 
 	user := &domain.User{}
 	err = scanUser(r.db.QueryRow(ctx, sql, args...), user)
-
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, ErrUserNotFound
 		}
-		return nil, err
+		return nil, ErrDatabaseInternal
 	}
 	return user, nil
 }
 
-func (r *usersRepository) UpdateUser(ctx context.Context, params *domain.UpdateUserParams) (*domain.User, error) {
-	builder := r.psql.
-		Update("users").
-		Set("updated_at", time.Now())
+func (r *UsersRepository) UpdateUser(ctx context.Context, params *domain.UpdateUserParams) (*domain.User, error) {
+	builder := r.psql.Update("users").Set("updated_at", time.Now())
 
 	if params.Name != nil {
 		builder = builder.Set("name", *params.Name)
@@ -113,28 +117,35 @@ func (r *usersRepository) UpdateUser(ctx context.Context, params *domain.UpdateU
 		builder = builder.Set("email", *params.Email)
 	}
 
-	sql, args, err := builder.Where(sq.Eq{"id": params.ID}).
-		Suffix("RETURNING " + strings.Join(userCols, ", ")).ToSql()
+	sql, args, err := builder.Where(sq.Eq{"id": params.ID}).Suffix("RETURNING " + strings.Join(userCols, ", ")).ToSql()
 	if err != nil {
 		return nil, err
 	}
 
 	user := &domain.User{}
-	return user, scanUser(r.db.QueryRow(ctx, sql, args...), user)
+	err = scanUser(r.db.QueryRow(ctx, sql, args...), user)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, ErrDuplicateEmail
+		}
+		return nil, ErrDatabaseInternal
+	}
+	return user, nil
 }
 
-func (r *usersRepository) DeleteUser(ctx context.Context, id int64) error {
-	sql, args, err := r.psql.
-		Delete("users").
-		Where(sq.Eq{"id": id}).
-		ToSql()
+func (r *UsersRepository) DeleteUser(ctx context.Context, id int64) error {
+	sql, args, err := r.psql.Delete("users").Where(sq.Eq{"id": id}).ToSql()
 	if err != nil {
 		return err
 	}
 
 	res, err := r.db.Exec(ctx, sql, args...)
 	if err != nil {
-		return err
+		return ErrDatabaseInternal
 	}
 	if res.RowsAffected() == 0 {
 		return ErrUserNotFound

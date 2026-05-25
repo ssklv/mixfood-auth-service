@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/ssklv/mixfood-auth-service/internal/domain"
 	"github.com/ssklv/mixfood-auth-service/internal/usecase"
 )
 
@@ -20,185 +19,114 @@ type loginReq struct {
 	Password string `json:"password"`
 }
 
-type ErrorResponse struct {
-	Error string `json:"error"`
+type authHandler struct {
+	authUC        usecase.AuthUsecase
+	tokenProvider usecase.TokenProvider
+	log           Logger
 }
 
-// @Summary Регистрация
-// @Tags Auth
-// @Accept json
-// @Produce json
-// @Param input body registerReq true "Данные пользователя"
-// @Success 201
-// @Failure 400 {object} ErrorResponse
-// @Failure 409 {object} ErrorResponse
-// @Router /api/auth/register [post]
-func (uh *usersHandler) register(c fiber.Ctx) error {
+func NewAuthHandler(authUC usecase.AuthUsecase, tp usecase.TokenProvider, log Logger) *authHandler {
+	return &authHandler{
+		authUC:        authUC,
+		tokenProvider: tp,
+		log:           log,
+	}
+}
+
+func (h *authHandler) RegisterRoutes(router fiber.Router, authMiddleware fiber.Handler) {
+	auth := router.Group("/auth")
+
+	auth.Post("/register", h.register)
+	auth.Post("/login", h.login)
+	auth.Get("/refresh", h.refresh)
+
+	// Логаут требует, чтобы пользователь был авторизован
+	auth.Post("/logout", authMiddleware, h.logout)
+}
+
+func (h *authHandler) register(c fiber.Ctx) error {
 	var req registerReq
 	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: "invalid request body"})
 	}
 
-	accessToken, refreshToken, err := uh.usecase.Register(c.Context(), req.Phone, req.Password, req.Name)
+	accessToken, refreshToken, err := h.authUC.Register(c.Context(), req.Phone, req.Password, req.Name)
 	if err != nil {
-		uh.log.Error("Registration error:", "err", err.Error())
+		h.log.Error("Registration error", "err", err.Error())
 		if errors.Is(err, usecase.ErrUserAlreadyExists) {
-			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Этот номер телефона уже зарегистрирован"})
+			return c.Status(fiber.StatusConflict).JSON(ErrorResponse{Error: "Этот номер телефона уже зарегистрирован"})
 		}
 		if errors.Is(err, usecase.ErrInvalidPhone) || errors.Is(err, usecase.ErrInvalidName) || errors.Is(err, usecase.ErrInvalidPasswordTooWeak) {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+			return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: err.Error()})
 		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal error"})
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "internal error"})
 	}
 
-	uh.setAuthCookies(c, accessToken, refreshToken)
+	h.setAuthCookies(c, accessToken, refreshToken)
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"accessToken": accessToken,
 	})
 }
 
-// @Summary Логин
-// @Tags Auth
-// @Accept json
-// @Produce json
-// @Param input body loginReq true "Телефон и пароль"
-// @Success 200
-// @Failure 401 {object} ErrorResponse
-// @Router /api/auth/login [post]
-func (uh *usersHandler) login(c fiber.Ctx) error {
+func (h *authHandler) login(c fiber.Ctx) error {
 	var req loginReq
 	if err := c.Bind().Body(&req); err != nil {
-		uh.log.Error("invalid request body in login", err)
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: "invalid request body"})
 	}
 
-	accessToken, refreshToken, err := uh.usecase.Login(c.Context(), req.Phone, req.Password)
+	accessToken, refreshToken, err := h.authUC.Login(c.Context(), req.Phone, req.Password)
 	if err != nil {
-		uh.log.Error("login failed", err, "phone", req.Phone)
+		h.log.Warn("Login failed", "phone", req.Phone, "err", err.Error())
 		if errors.Is(err, usecase.ErrInvalidCredentials) {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Неверный номер телефона или пароль"})
+			return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Неверный номер телефона или пароль"})
 		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "internal server error"})
 	}
 
-	uh.setAuthCookies(c, accessToken, refreshToken)
-
+	h.setAuthCookies(c, accessToken, refreshToken)
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"accessToken": accessToken,
 	})
 }
 
-// @Summary Выход
-// @Tags Auth
-// @Success 204
-// @Router /api/auth/logout [post]
-func (uh *usersHandler) logout(c fiber.Ctx) error {
+func (h *authHandler) logout(c fiber.Ctx) error {
 	refreshToken := c.Cookies(RefreshCookie)
-	err := uh.usecase.Logout(c.Context(), refreshToken)
+	err := h.authUC.Logout(c.Context(), refreshToken)
 
-	uh.clearAuthCookies(c)
+	h.clearAuthCookies(c)
 
 	if err != nil {
-		uh.log.Error("logout failed", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to logout"})
+		h.log.Error("Logout failed", "err", err.Error())
+		// Мы всё равно очистили куки клиента, но возвращаем ошибку, если сессии не было в БД
+		if errors.Is(err, usecase.ErrSessionNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{Error: "active session not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "failed to logout"})
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-// @Summary Обновление токенов
-// @Tags Auth
-// @Success 200
-// @Failure 401 {object} ErrorResponse
-// @Router /api/auth/refresh [get]
-func (uh *usersHandler) refresh(c fiber.Ctx) error {
+func (h *authHandler) refresh(c fiber.Ctx) error {
 	oldRefreshToken := c.Cookies(RefreshCookie)
 	if oldRefreshToken == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "empty refresh token"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "empty refresh token"})
 	}
 
-	accessToken, newRefreshToken, err := uh.usecase.RefreshTokens(c.Context(), oldRefreshToken)
+	accessToken, newRefreshToken, err := h.authUC.RefreshTokens(c.Context(), oldRefreshToken)
 	if err != nil {
-		uh.log.Warn("token refresh failed", err)
+		h.log.Warn("Token refresh failed", "err", err.Error())
 		if errors.Is(err, usecase.ErrSessionExpired) {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "session expired"})
+			return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "session expired"})
 		}
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "session not found or invalid"})
+		return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "session not found or invalid"})
 	}
 
-	uh.setAuthCookies(c, accessToken, newRefreshToken)
+	h.setAuthCookies(c, accessToken, newRefreshToken)
 	return c.SendStatus(fiber.StatusOK)
 }
 
-// @Summary Обновить профиль
-// @Tags User
-// @Accept json
-// @Produce json
-// @Param input body domain.UpdateUserParams true "Данные"
-// @Success 200 {object} domain.User
-// @Failure 400 {object} ErrorResponse
-// @Router /api/user/profile [patch]
-func (uh *usersHandler) updateProfile(c fiber.Ctx) error {
-	userID := c.Locals("userID").(int64)
-	var params domain.UpdateUserParams
-	if err := c.Bind().Body(&params); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
-	}
-
-	params.ID = userID
-	user, err := uh.usecase.UpdateProfile(c.Context(), &params)
-	if err != nil {
-		if errors.Is(err, usecase.ErrInvalidPhone) || errors.Is(err, usecase.ErrInvalidName) || errors.Is(err, usecase.ErrInvalidEmail) {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
-		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to update profile"})
-	}
-	return c.JSON(user)
-}
-
-// @Summary Создать адрес
-// @Tags User
-// @Accept json
-// @Produce json
-// @Param input body domain.Address true "Данные адреса"
-// @Success 201
-// @Failure 400 {object} ErrorResponse
-// @Failure 500 {object} ErrorResponse
-// @Router /api/user/address [post]
-func (uh *usersHandler) createAddress(c fiber.Ctx) error {
-	userID := c.Locals("userID").(int64)
-	var addr domain.Address
-	if err := c.Bind().Body(&addr); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
-	}
-
-	addr.UserID = userID
-	if err := uh.usecase.CreateAddress(c.Context(), &addr); err != nil {
-		if errors.Is(err, usecase.ErrInvalidAddress) {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
-		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create address"})
-	}
-	return c.SendStatus(fiber.StatusCreated)
-}
-
-// @Summary Получить мои адреса
-// @Tags User
-// @Produce json
-// @Success 200 {array} domain.Address
-// @Failure 500 {object} ErrorResponse
-// @Router /api/user/addresses [get]
-func (uh *usersHandler) getMyAddresses(c fiber.Ctx) error {
-	userID := c.Locals("userID").(int64)
-	addresses, err := uh.usecase.GetAddresses(c.Context(), userID)
-	if err != nil {
-		uh.log.Error("failed to get addresses", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal error"})
-	}
-	return c.JSON(addresses)
-}
-
-func (uh *usersHandler) setAuthCookies(c fiber.Ctx, accessToken, refreshToken string) {
+func (h *authHandler) setAuthCookies(c fiber.Ctx, accessToken, refreshToken string) {
 	c.Cookie(&fiber.Cookie{
 		Name:     AccessCookie,
 		Value:    accessToken,
@@ -217,12 +145,11 @@ func (uh *usersHandler) setAuthCookies(c fiber.Ctx, accessToken, refreshToken st
 	})
 }
 
-func (uh *usersHandler) clearAuthCookies(c fiber.Ctx) {
+func (h *authHandler) clearAuthCookies(c fiber.Ctx) {
 	c.Cookie(&fiber.Cookie{
 		Name:     AccessCookie,
 		Value:    "",
 		Path:     "/",
-		Domain:   "localhost",
 		Expires:  time.Now().Add(-time.Hour),
 		HTTPOnly: true,
 		Secure:   false,
@@ -231,7 +158,6 @@ func (uh *usersHandler) clearAuthCookies(c fiber.Ctx) {
 		Name:     RefreshCookie,
 		Value:    "",
 		Path:     "/",
-		Domain:   "localhost",
 		Expires:  time.Now().Add(-time.Hour),
 		HTTPOnly: true,
 		Secure:   false,

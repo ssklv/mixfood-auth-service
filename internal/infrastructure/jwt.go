@@ -3,7 +3,6 @@ package infrastructure
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -13,10 +12,6 @@ type TokenProvider struct {
 	signingKey []byte
 	accessTTL  time.Duration
 }
-
-//GenerateAccessToken(userID int64, role string) (string, error)
-//GenerateRefreshToken() (string, error)
-//ParseToken(tokenString string) (int64, string, error)
 
 func NewTokenProvider(key string, ttl time.Duration) *TokenProvider {
 	return &TokenProvider{
@@ -50,13 +45,19 @@ func (p *TokenProvider) ParseToken(tokenString string) (int64, string, error) {
 		return p.signingKey, nil
 	})
 	if err != nil {
-		return 0, "", err
+		return 0, "", ErrInvalidToken
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		userID := int64(claims["sub"].(float64))
+		subRaw, ok := claims["sub"].(float64)
+		if !ok {
+			return 0, "", ErrInvalidToken
+		}
+		userID := int64(subRaw)
+
 		role, _ := claims["role"].(string)
 		return userID, role, nil
 	}
-	return 0, "", errors.New("invalid token claims")
+
+	return 0, "", ErrInvalidToken
 }

@@ -17,8 +17,9 @@ type UserRepository interface {
 type AddressRepository interface {
 	CreateAddress(ctx context.Context, addr *domain.Address) error
 	GetAddressesByUserID(ctx context.Context, userID int64) ([]domain.Address, error)
-	DeleteAddress(ctx context.Context, id int64) error
+	GetAddressByID(ctx context.Context, id int64) (*domain.Address, error)
 	UpdateAddress(ctx context.Context, addr *domain.Address) error
+	DeleteAddress(ctx context.Context, id int64) error
 }
 
 type SessionRepository interface {
@@ -27,29 +28,31 @@ type SessionRepository interface {
 	DeleteSession(ctx context.Context, refreshToken string) error
 }
 
-// /
+// AuthUsecase занимается исключительно сессиями и доступом
 type AuthUsecase interface {
-	Register(ctx context.Context, phone, password, name string) (string, string, error)
-	Login(ctx context.Context, phone, password string) (string, string, error)
+	Register(ctx context.Context, phone, password, name string) (accessToken string, refreshToken string, err error)
+	Login(ctx context.Context, phone, password string) (accessToken string, refreshToken string, err error)
 	Logout(ctx context.Context, refreshToken string) error
+	RefreshTokens(ctx context.Context, tokenInput string) (accessToken string, refreshToken string, err error)
 	ValidateToken(ctx context.Context, tokenString string) (*domain.User, error)
-	RefreshTokens(ctx context.Context, refreshToken string) (string, string, error)
-
-	///для юзер репозитория
-	GetUserByID(ctx context.Context, id int64) (*domain.User, error)
-	UpdateProfile(ctx context.Context, params *domain.UpdateUserParams) (*domain.User, error)
-
-	//адрес
-	CreateAddress(ctx context.Context, addr *domain.Address) error
-	GetAddresses(ctx context.Context, userID int64) ([]domain.Address, error)
-	UpdateAddress(ctx context.Context, addr *domain.Address) error
-	DeleteAddress(ctx context.Context, id int64) error
 }
 
+// ////
+type UserUsecase interface {
+	GetProfile(ctx context.Context, id int64) (*domain.User, error)
+	UpdateProfile(ctx context.Context, params *domain.UpdateUserParams) (*domain.User, error)
+
+	CreateAddress(ctx context.Context, addr *domain.Address) error
+	GetAddresses(ctx context.Context, userID int64) ([]domain.Address, error)
+	UpdateAddress(ctx context.Context, userID int64, addr *domain.Address) error
+	DeleteAddress(ctx context.Context, userID int64, addressID int64) error
+}
+
+// ////
 type TokenProvider interface {
 	GenerateAccessToken(userID int64, role string) (string, error)
 	GenerateRefreshToken() (string, error)
-	ParseToken(tokenString string) (int64, string, error)
+	ParseToken(tokenString string) (userID int64, role string, err error)
 }
 
 type PasswordHasher interface {

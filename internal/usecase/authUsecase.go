@@ -2,25 +2,24 @@ package usecase
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/ssklv/mixfood-auth-service/internal/domain"
+	"github.com/ssklv/mixfood-auth-service/internal/infrastructure"
 )
 
 type authUsecase struct {
 	authRepo       SessionRepository
 	userRepo       UserRepository
-	addressRepo    AddressRepository
 	tokenProvider  TokenProvider
 	passwordHasher PasswordHasher
 }
 
-func NewAuthUsecase(authRepo SessionRepository, userRepo UserRepository, addressRepo AddressRepository, tokenProvider TokenProvider, passwordHasher PasswordHasher) AuthUsecase {
+func NewAuthUsecase(authRepo SessionRepository, userRepo UserRepository, tokenProvider TokenProvider, passwordHasher PasswordHasher) AuthUsecase {
 	return &authUsecase{
 		authRepo:       authRepo,
 		userRepo:       userRepo,
-		addressRepo:    addressRepo,
 		tokenProvider:  tokenProvider,
 		passwordHasher: passwordHasher,
 	}
@@ -29,19 +28,27 @@ func NewAuthUsecase(authRepo SessionRepository, userRepo UserRepository, address
 func (au *authUsecase) ValidateToken(ctx context.Context, tokenString string) (*domain.User, error) {
 	userID, _, err := au.tokenProvider.ParseToken(tokenString)
 	if err != nil {
-		return nil, fmt.Errorf("validateToken: parse: %w", err)
+		return nil, ErrInvalidCredentials
 	}
-	return au.userRepo.GetUserByID(ctx, userID)
+
+	user, err := au.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, infrastructure.ErrUserNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, ErrInternal
+	}
+	return user, nil
 }
 
 func (au *authUsecase) generateTokenPair(ctx context.Context, user *domain.User) (string, string, error) {
 	accessToken, err := au.tokenProvider.GenerateAccessToken(user.ID, string(user.Role))
 	if err != nil {
-		return "", "", err
+		return "", "", ErrInternal
 	}
 	refreshToken, err := au.tokenProvider.GenerateRefreshToken()
 	if err != nil {
-		return "", "", err
+		return "", "", ErrInternal
 	}
 	session := &domain.UserSession{
 		UserID:       user.ID,
@@ -49,7 +56,7 @@ func (au *authUsecase) generateTokenPair(ctx context.Context, user *domain.User)
 		ExpiresAt:    time.Now().Add(time.Hour * 24 * 30),
 	}
 	if err := au.authRepo.SaveSession(ctx, session); err != nil {
-		return "", "", err
+		return "", "", ErrInternal
 	}
 	return accessToken, refreshToken, nil
 }
@@ -65,17 +72,19 @@ func (au *authUsecase) Register(ctx context.Context, phone, password, name strin
 		return "", "", err
 	}
 
-	existingUser, err := au.userRepo.GetUserByPhone(ctx, phone)
-	if err != nil {
-		return "", "", err
-	}
-	if existingUser != nil {
+	_, err := au.userRepo.GetUserByPhone(ctx, phone)
+	if err == nil {
+		// Пользователь нашелся без ошибок -> значит, номер занят
 		return "", "", ErrUserAlreadyExists
+	}
+	// Если ошибка КРОМЕ "UserNotFound" — значит упала база данных
+	if !errors.Is(err, infrastructure.ErrUserNotFound) {
+		return "", "", ErrInternal
 	}
 
 	hashedPassword, err := au.passwordHasher.HashPassword(password)
 	if err != nil {
-		return "", "", err
+		return "", "", ErrInternal
 	}
 
 	user := &domain.User{
@@ -87,21 +96,28 @@ func (au *authUsecase) Register(ctx context.Context, phone, password, name strin
 	}
 
 	if err := au.userRepo.CreateUser(ctx, user); err != nil {
-		return "", "", err
+		if errors.Is(err, infrastructure.ErrDuplicatePhone) {
+			return "", "", ErrUserAlreadyExists
+		}
+		return "", "", ErrInternal
 	}
 
 	return au.generateTokenPair(ctx, user)
 }
 
 func (au *authUsecase) Login(ctx context.Context, phone, password string) (string, string, error) {
-	user, err := au.userRepo.GetUserByPhone(ctx, phone)
-
-	if err != nil {
-		return "", "", err
-	}
-	if user == nil {
+	if err := validatePhone(phone); err != nil {
 		return "", "", ErrInvalidCredentials
 	}
+
+	user, err := au.userRepo.GetUserByPhone(ctx, phone)
+	if err != nil {
+		if errors.Is(err, infrastructure.ErrUserNotFound) {
+			return "", "", ErrInvalidCredentials
+		}
+		return "", "", ErrInternal
+	}
+
 	if err := au.passwordHasher.CompareHashAndPassword(user.PasswordHash, password); err != nil {
 		return "", "", ErrInvalidCredentials
 	}
@@ -110,16 +126,25 @@ func (au *authUsecase) Login(ctx context.Context, phone, password string) (strin
 }
 
 func (au *authUsecase) Logout(ctx context.Context, refreshToken string) error {
-	return au.authRepo.DeleteSession(ctx, refreshToken)
+	err := au.authRepo.DeleteSession(ctx, refreshToken)
+	if err != nil {
+		if errors.Is(err, infrastructure.ErrSessionNotFound) {
+			return ErrSessionNotFound
+		}
+		return ErrInternal
+	}
+	return nil
 }
 
 func (au *authUsecase) RefreshTokens(ctx context.Context, refreshToken string) (string, string, error) {
 	session, err := au.authRepo.GetSessionByToken(ctx, refreshToken)
 	if err != nil {
-		return "", "", ErrSessionNotFound
+		if errors.Is(err, infrastructure.ErrSessionNotFound) {
+			return "", "", ErrSessionNotFound
+		}
+		return "", "", ErrInternal
 	}
 
-	// Защита от использования просроченных refresh-токенов
 	if time.Now().After(session.ExpiresAt) {
 		_ = au.authRepo.DeleteSession(ctx, refreshToken)
 		return "", "", ErrSessionExpired
@@ -127,55 +152,12 @@ func (au *authUsecase) RefreshTokens(ctx context.Context, refreshToken string) (
 
 	user, err := au.userRepo.GetUserByID(ctx, session.UserID)
 	if err != nil {
-		return "", "", err
+		if errors.Is(err, infrastructure.ErrUserNotFound) {
+			return "", "", ErrUserNotFound
+		}
+		return "", "", ErrInternal
 	}
 
 	_ = au.authRepo.DeleteSession(ctx, refreshToken)
 	return au.generateTokenPair(ctx, user)
-}
-
-func (au *authUsecase) UpdateProfile(ctx context.Context, params *domain.UpdateUserParams) (*domain.User, error) {
-	if params.Name != nil {
-		if err := validateName(*params.Name); err != nil {
-			return nil, err
-		}
-	}
-	if params.Phone != nil {
-		if err := validatePhone(*params.Phone); err != nil {
-			return nil, err
-		}
-	}
-	if params.Email != nil {
-		if err := validateEmail(*params.Email); err != nil {
-			return nil, err
-		}
-	}
-
-	return au.userRepo.UpdateUser(ctx, params)
-}
-
-func (au *authUsecase) GetUserByID(ctx context.Context, id int64) (*domain.User, error) {
-	return au.userRepo.GetUserByID(ctx, id)
-}
-
-func (au *authUsecase) CreateAddress(ctx context.Context, addr *domain.Address) error {
-	if err := validateAddress(addr.StreetHouse); err != nil {
-		return err
-	}
-	return au.addressRepo.CreateAddress(ctx, addr)
-}
-
-func (au *authUsecase) GetAddresses(ctx context.Context, userID int64) ([]domain.Address, error) {
-	return au.addressRepo.GetAddressesByUserID(ctx, userID)
-}
-
-func (au *authUsecase) UpdateAddress(ctx context.Context, addr *domain.Address) error {
-	if err := validateAddress(addr.StreetHouse); err != nil {
-		return err
-	}
-	return au.addressRepo.UpdateAddress(ctx, addr)
-}
-
-func (au *authUsecase) DeleteAddress(ctx context.Context, id int64) error {
-	return au.addressRepo.DeleteAddress(ctx, id)
 }

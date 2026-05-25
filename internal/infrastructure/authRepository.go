@@ -6,9 +6,9 @@ import (
 )
 
 type AuthRepository struct {
-	Users    *usersRepository
-	Sessions *sessionsRepository
-	Address  *addressRepository
+	Users    *UsersRepository
+	Sessions *SessionsRepository
+	Address  *AddressRepository
 }
 
 func NewAuthRepository(db *pgxpool.Pool, psql sq.StatementBuilderType) *AuthRepository {

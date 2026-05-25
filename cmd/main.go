@@ -83,7 +83,7 @@ func main() {
 	handlers.ConfigureApp(app, authUsecase, userUsecase, tokenProvider, logAdapter)
 
 	if logger.Logger != nil {
-		logger.Logger.Info(fmt.Sprintf("Сервер успешно запущен на порту :%s", cfg.ServerPort))
+		logger.Logger.Info(fmt.Sprintf("Сервер запущен на порту :%s", cfg.ServerPort))
 	}
 
 	if err := app.Listen(":" + cfg.ServerPort); err != nil && logger.Logger != nil {

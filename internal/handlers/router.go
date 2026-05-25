@@ -4,6 +4,8 @@ import (
 	"github.com/gofiber/contrib/v3/swaggo"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v3/middleware/logger"
+	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/ssklv/mixfood-auth-service/internal/usecase"
 )
 
@@ -14,14 +16,16 @@ func ConfigureApp(
 	tokenProvider usecase.TokenProvider,
 	log Logger,
 ) {
+	app.Use(recover.New())
+	app.Use(logger.New())
+
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:8080"},
+		AllowOrigins:     []string{"http://localhost:8080", "http://localhost:5173", "http://localhost:8082"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowCredentials: true,
 	}))
 
-	// http://localhost:8080/swagger/index.html
 	app.Get("/swagger/*", swaggo.HandlerDefault)
 
 	authMiddleware := NewAuthMiddleware(tokenProvider, log)

@@ -11,6 +11,7 @@
     "paths": {
         "/api/auth/login": {
             "post": {
+                "description": "Аутентификация по номеру телефона и паролю. Устанавливает токены в httpOnly куки.",
                 "consumes": [
                     "application/json"
                 ],
@@ -20,26 +21,44 @@
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Логин",
+                "summary": "Авторизация (Вход)",
                 "parameters": [
                     {
-                        "description": "Телефон и пароль",
+                        "description": "Учетные данные",
                         "name": "input",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.loginReq"
+                            "$ref": "#/definitions/handlers.loginReq"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "Возвращает accessToken в формате JSON",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Неверный номер телефона или пароль",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -47,31 +66,53 @@
         },
         "/api/auth/logout": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Удаляет сессию из базы данных и инвалидирует авторизационные куки на клиенте.",
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Выход",
+                "summary": "Выход из системы",
                 "responses": {
                     "204": {
-                        "description": "No Content"
+                        "description": "Успешный выход без тела ответа"
+                    },
+                    "404": {
+                        "description": "active session not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to logout",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
                     }
                 }
             }
         },
         "/api/auth/refresh": {
             "get": {
+                "description": "Принимает refresh_token из куки, проверяет его валидность и генерирует новую пару токенов.",
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Обновление токенов",
+                "summary": "Обновление сессии (Refresh)",
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "Токены успешно обновлены"
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "session expired / invalid",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -79,6 +120,7 @@
         },
         "/api/auth/register": {
             "post": {
+                "description": "Создание нового аккаунта, генерация и автоматическая установка JWT-токенов в куки.",
                 "consumes": [
                     "application/json"
                 ],
@@ -88,39 +130,118 @@
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Регистрация",
+                "summary": "Регистрация пользователя",
                 "parameters": [
                     {
-                        "description": "Данные пользователя",
+                        "description": "Данные для регистрации",
                         "name": "input",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.registerReq"
+                            "$ref": "#/definitions/handlers.registerReq"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created"
+                        "description": "Возвращает accessToken в формате JSON",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Невалидный формат запроса или слабый пароль",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "409": {
-                        "description": "Conflict",
+                        "description": "Этот номер телефона уже зарегистрирован",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
             }
         },
         "/api/user/address": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Модификация полей существующего адреса доставки.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Обновить адрес",
+                "parameters": [
+                    {
+                        "description": "Данные адреса (включая ID адреса)",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.Address"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Адрес успешно обновлен"
+                    },
+                    "400": {
+                        "description": "Невалидный адрес",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "address not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to update address",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Добавление нового адреса доставки, связанного с текущим пользователем.",
                 "consumes": [
                     "application/json"
                 ],
@@ -138,24 +259,91 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address"
+                            "$ref": "#/definitions/domain.Address"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created"
+                        "description": "Успешно созданный адрес",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Address"
+                        }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Невалидный адрес",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "failed to create address",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Удаление адреса доставки из списка пользователя по ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Удалить адрес",
+                "parameters": [
+                    {
+                        "description": "ID адреса для удаления",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.deleteAddressReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Адрес успешно удален (No Content)"
+                    },
+                    "400": {
+                        "description": "invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "address not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to delete address",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -163,27 +351,88 @@
         },
         "/api/user/addresses": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Получение всех сохраненных адресов доставки авторизованного пользователя.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "User"
                 ],
-                "summary": "Получить мои адреса",
+                "summary": "Список адресов",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Массив адресов",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address"
+                                "$ref": "#/definitions/domain.Address"
                             }
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/user/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Возвращает данные профиля авторизованного пользователя на основе ID из токена.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Профиль текущего пользователя",
+                "responses": {
+                    "200": {
+                        "description": "Объект пользователя",
+                        "schema": {
+                            "$ref": "#/definitions/domain.User"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -191,6 +440,15 @@
         },
         "/api/user/profile": {
             "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Частичное обновление полей профиля пользователя (имя, телефон, email).",
                 "consumes": [
                     "application/json"
                 ],
@@ -203,62 +461,44 @@
                 "summary": "Обновить профиль",
                 "parameters": [
                     {
-                        "description": "Данные",
+                        "description": "Данные профиля",
                         "name": "input",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.UpdateUserParams"
+                            "$ref": "#/definitions/domain.UpdateUserParams"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Обновленный объект пользователя",
                         "schema": {
-                            "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.User"
+                            "$ref": "#/definitions/domain.User"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Ошибка валидации переданных параметров",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/users/me": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Profile"
-                ],
-                "summary": "Получить профиль пользователя",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.User"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "user not found",
                         "schema": {
-                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to update profile",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
                         }
                     }
                 }
@@ -266,7 +506,7 @@
         }
     },
     "definitions": {
-        "github_com_ssklv_mixfood-auth-service_internal_domain.Address": {
+        "domain.Address": {
             "type": "object",
             "properties": {
                 "apartment": {
@@ -292,7 +532,7 @@
                 }
             }
         },
-        "github_com_ssklv_mixfood-auth-service_internal_domain.UpdateUserParams": {
+        "domain.UpdateUserParams": {
             "type": "object",
             "properties": {
                 "email": {
@@ -306,7 +546,7 @@
                 }
             }
         },
-        "github_com_ssklv_mixfood-auth-service_internal_domain.User": {
+        "domain.User": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -325,14 +565,14 @@
                     "type": "string"
                 },
                 "role": {
-                    "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.UserRole"
+                    "$ref": "#/definitions/domain.UserRole"
                 },
                 "updatedAt": {
                     "type": "string"
                 }
             }
         },
-        "github_com_ssklv_mixfood-auth-service_internal_domain.UserRole": {
+        "domain.UserRole": {
             "type": "string",
             "enum": [
                 "user",
@@ -343,7 +583,7 @@
                 "RoleAdmin"
             ]
         },
-        "internal_handlers.ErrorResponse": {
+        "handlers.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -351,7 +591,15 @@
                 }
             }
         },
-        "internal_handlers.loginReq": {
+        "handlers.deleteAddressReq": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "handlers.loginReq": {
             "type": "object",
             "properties": {
                 "password": {
@@ -362,7 +610,7 @@
                 }
             }
         },
-        "internal_handlers.registerReq": {
+        "handlers.registerReq": {
             "type": "object",
             "properties": {
                 "name": {
@@ -378,9 +626,16 @@
         }
     },
     "securityDefinitions": {
-        "CookieAuth": {
+        "BearerAuth": {
+            "description": "Введите токен в формате: Bearer \u003ctoken\u003e",
             "type": "apiKey",
-            "name": "jwt",
+            "name": "Authorization",
+            "in": "header"
+        },
+        "CookieAuth": {
+            "description": "Токен доступа (access_token), автоматически извлекаемый из Cookie",
+            "type": "apiKey",
+            "name": "access_token",
             "in": "cookie"
         }
     }

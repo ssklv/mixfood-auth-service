@@ -1,6 +1,6 @@
 basePath: /
 definitions:
-  github_com_ssklv_mixfood-auth-service_internal_domain.Address:
+  domain.Address:
     properties:
       apartment:
         type: string
@@ -17,7 +17,7 @@ definitions:
       user_id:
         type: integer
     type: object
-  github_com_ssklv_mixfood-auth-service_internal_domain.UpdateUserParams:
+  domain.UpdateUserParams:
     properties:
       email:
         type: string
@@ -26,7 +26,7 @@ definitions:
       phone:
         type: string
     type: object
-  github_com_ssklv_mixfood-auth-service_internal_domain.User:
+  domain.User:
     properties:
       createdAt:
         type: string
@@ -39,11 +39,11 @@ definitions:
       phone:
         type: string
       role:
-        $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.UserRole'
+        $ref: '#/definitions/domain.UserRole'
       updatedAt:
         type: string
     type: object
-  github_com_ssklv_mixfood-auth-service_internal_domain.UserRole:
+  domain.UserRole:
     enum:
     - user
     - admin
@@ -51,19 +51,24 @@ definitions:
     x-enum-varnames:
     - RoleUser
     - RoleAdmin
-  internal_handlers.ErrorResponse:
+  handlers.ErrorResponse:
     properties:
       error:
         type: string
     type: object
-  internal_handlers.loginReq:
+  handlers.deleteAddressReq:
+    properties:
+      id:
+        type: integer
+    type: object
+  handlers.loginReq:
     properties:
       password:
         type: string
       phone:
         type: string
     type: object
-  internal_handlers.registerReq:
+  handlers.registerReq:
     properties:
       name:
         type: string
@@ -83,167 +88,326 @@ paths:
     post:
       consumes:
       - application/json
+      description: Аутентификация по номеру телефона и паролю. Устанавливает токены
+        в httpOnly куки.
       parameters:
-      - description: Телефон и пароль
+      - description: Учетные данные
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/internal_handlers.loginReq'
+          $ref: '#/definitions/handlers.loginReq'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
-        "401":
-          description: Unauthorized
+          description: Возвращает accessToken в формате JSON
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      summary: Логин
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Неверный номер телефона или пароль
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: internal server error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Авторизация (Вход)
       tags:
       - Auth
   /api/auth/logout:
     post:
+      description: Удаляет сессию из базы данных и инвалидирует авторизационные куки
+        на клиенте.
       responses:
         "204":
-          description: No Content
-      summary: Выход
+          description: Успешный выход без тела ответа
+        "404":
+          description: active session not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: failed to logout
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Выход из системы
       tags:
       - Auth
   /api/auth/refresh:
     get:
+      description: Принимает refresh_token из куки, проверяет его валидность и генерирует
+        новую пару токенов.
       responses:
         "200":
-          description: OK
+          description: Токены успешно обновлены
         "401":
-          description: Unauthorized
+          description: session expired / invalid
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      summary: Обновление токенов
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Обновление сессии (Refresh)
       tags:
       - Auth
   /api/auth/register:
     post:
       consumes:
       - application/json
+      description: Создание нового аккаунта, генерация и автоматическая установка
+        JWT-токенов в куки.
       parameters:
-      - description: Данные пользователя
+      - description: Данные для регистрации
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/internal_handlers.registerReq'
+          $ref: '#/definitions/handlers.registerReq'
       produces:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Возвращает accessToken в формате JSON
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "400":
-          description: Bad Request
+          description: Невалидный формат запроса или слабый пароль
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "409":
-          description: Conflict
+          description: Этот номер телефона уже зарегистрирован
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      summary: Регистрация
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Регистрация пользователя
       tags:
       - Auth
   /api/user/address:
+    delete:
+      consumes:
+      - application/json
+      description: Удаление адреса доставки из списка пользователя по ID.
+      parameters:
+      - description: ID адреса для удаления
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.deleteAddressReq'
+      responses:
+        "204":
+          description: Адрес успешно удален (No Content)
+        "400":
+          description: invalid request body
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: address not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: failed to delete address
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Удалить адрес
+      tags:
+      - User
     post:
       consumes:
       - application/json
+      description: Добавление нового адреса доставки, связанного с текущим пользователем.
       parameters:
       - description: Данные адреса
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address'
+          $ref: '#/definitions/domain.Address'
       produces:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Успешно созданный адрес
+          schema:
+            $ref: '#/definitions/domain.Address'
         "400":
-          description: Bad Request
+          description: Невалидный адрес
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: failed to create address
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Создать адрес
+      tags:
+      - User
+    put:
+      consumes:
+      - application/json
+      description: Модификация полей существующего адреса доставки.
+      parameters:
+      - description: Данные адреса (включая ID адреса)
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Address'
+      responses:
+        "200":
+          description: Адрес успешно обновлен
+        "400":
+          description: Невалидный адрес
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: address not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: failed to update address
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Обновить адрес
       tags:
       - User
   /api/user/addresses:
     get:
+      description: Получение всех сохраненных адресов доставки авторизованного пользователя.
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Массив адресов
           schema:
             items:
-              $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address'
+              $ref: '#/definitions/domain.Address'
             type: array
-        "500":
-          description: Internal Server Error
+        "401":
+          description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      summary: Получить мои адреса
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Список адресов
+      tags:
+      - User
+  /api/user/me:
+    get:
+      description: Возвращает данные профиля авторизованного пользователя на основе
+        ID из токена.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Объект пользователя
+          schema:
+            $ref: '#/definitions/domain.User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: user not found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: internal error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Профиль текущего пользователя
       tags:
       - User
   /api/user/profile:
     patch:
       consumes:
       - application/json
+      description: Частичное обновление полей профиля пользователя (имя, телефон,
+        email).
       parameters:
-      - description: Данные
+      - description: Данные профиля
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.UpdateUserParams'
+          $ref: '#/definitions/domain.UpdateUserParams'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Обновленный объект пользователя
           schema:
-            $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.User'
+            $ref: '#/definitions/domain.User'
         "400":
-          description: Bad Request
+          description: Ошибка валидации переданных параметров
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      summary: Обновить профиль
-      tags:
-      - User
-  /api/users/me:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.User'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
-          description: Not Found
+          description: user not found
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: failed to update profile
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
-      - ApiKeyAuth: []
-      summary: Получить профиль пользователя
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Обновить профиль
       tags:
-      - Profile
+      - User
 securityDefinitions:
+  BearerAuth:
+    description: 'Введите токен в формате: Bearer <token>'
+    in: header
+    name: Authorization
+    type: apiKey
   CookieAuth:
+    description: Токен доступа (access_token), автоматически извлекаемый из Cookie
     in: cookie
-    name: jwt
+    name: access_token
     type: apiKey
 swagger: "2.0"

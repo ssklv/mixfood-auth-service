@@ -86,7 +86,6 @@ func (uu *userUsecase) UpdateAddress(ctx context.Context, userID int64, addr *do
 		return err
 	}
 
-	// Принудительно выставляем userID из контекста авторизации для безопасности
 	addr.UserID = userID
 
 	err := uu.addressRepo.UpdateAddress(ctx, addr)

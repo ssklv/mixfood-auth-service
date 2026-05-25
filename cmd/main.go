@@ -30,14 +30,21 @@ func (za *zapAdapter) Warn(msg string, fields ...any) {
 	}
 }
 
-// @title Mixfood Auth Service API
-// @version 1.0
-// @description API для аутентификации и работы с пользователями
-// @host localhost:8080
-// @BasePath /
-// @securityDefinitions.apikey CookieAuth
-// @in cookie
-// @name access_token
+// @title                       Mixfood Auth Service API
+// @version                     1.0
+// @description                 API для аутентификации и работы с пользователями
+// @host                        localhost:8080
+// @BasePath                    /
+
+// @securityDefinitions.apikey  BearerAuth
+// @in                          header
+// @name                        Authorization
+// @description                 Введите токен в формате: Bearer <token>
+
+// @securityDefinitions.apikey  CookieAuth
+// @in                          cookie
+// @name                        access_token
+// @description                 Токен доступа (access_token), автоматически извлекаемый из Cookie
 func main() {
 	logger.InitLogger()
 	if logger.Logger != nil {

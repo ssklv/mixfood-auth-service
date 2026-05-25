@@ -35,7 +35,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.loginReq"
+                            "$ref": "#/definitions/internal_handlers.loginReq"
                         }
                     }
                 ],
@@ -52,19 +52,19 @@ const docTemplate = `{
                     "400": {
                         "description": "invalid request body",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Неверный номер телефона или пароль",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "internal server error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -92,13 +92,13 @@ const docTemplate = `{
                     "404": {
                         "description": "active session not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "failed to logout",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -118,7 +118,7 @@ const docTemplate = `{
                     "401": {
                         "description": "session expired / invalid",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -144,7 +144,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.registerReq"
+                            "$ref": "#/definitions/internal_handlers.registerReq"
                         }
                     }
                 ],
@@ -161,19 +161,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидный формат запроса или слабый пароль",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Этот номер телефона уже зарегистрирован",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -204,7 +204,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/domain.Address"
+                            "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address"
                         }
                     }
                 ],
@@ -215,25 +215,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Невалидный адрес",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "address not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "failed to update address",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -265,7 +265,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/domain.Address"
+                            "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address"
                         }
                     }
                 ],
@@ -273,25 +273,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Успешно созданный адрес",
                         "schema": {
-                            "$ref": "#/definitions/domain.Address"
+                            "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address"
                         }
                     },
                     "400": {
                         "description": "Невалидный адрес",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "failed to create address",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -320,7 +320,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.deleteAddressReq"
+                            "$ref": "#/definitions/internal_handlers.deleteAddressReq"
                         }
                     }
                 ],
@@ -331,25 +331,25 @@ const docTemplate = `{
                     "400": {
                         "description": "invalid request body",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "address not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "failed to delete address",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -379,20 +379,20 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/domain.Address"
+                                "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address"
                             }
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "internal error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -420,25 +420,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Объект пользователя",
                         "schema": {
-                            "$ref": "#/definitions/domain.User"
+                            "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.User"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "user not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "internal error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -472,7 +472,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/domain.UpdateUserParams"
+                            "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.UpdateUserParams"
                         }
                     }
                 ],
@@ -480,31 +480,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Обновленный объект пользователя",
                         "schema": {
-                            "$ref": "#/definitions/domain.User"
+                            "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.User"
                         }
                     },
                     "400": {
                         "description": "Ошибка валидации переданных параметров",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "user not found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "failed to update profile",
                         "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
+                            "$ref": "#/definitions/internal_handlers.ErrorResponse"
                         }
                     }
                 }
@@ -512,7 +512,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "domain.Address": {
+        "github_com_ssklv_mixfood-auth-service_internal_domain.Address": {
             "type": "object",
             "properties": {
                 "apartment": {
@@ -538,7 +538,7 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.UpdateUserParams": {
+        "github_com_ssklv_mixfood-auth-service_internal_domain.UpdateUserParams": {
             "type": "object",
             "properties": {
                 "email": {
@@ -552,7 +552,7 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.User": {
+        "github_com_ssklv_mixfood-auth-service_internal_domain.User": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -571,14 +571,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "role": {
-                    "$ref": "#/definitions/domain.UserRole"
+                    "$ref": "#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.UserRole"
                 },
                 "updatedAt": {
                     "type": "string"
                 }
             }
         },
-        "domain.UserRole": {
+        "github_com_ssklv_mixfood-auth-service_internal_domain.UserRole": {
             "type": "string",
             "enum": [
                 "user",
@@ -589,7 +589,7 @@ const docTemplate = `{
                 "RoleAdmin"
             ]
         },
-        "handlers.ErrorResponse": {
+        "internal_handlers.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -597,7 +597,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.deleteAddressReq": {
+        "internal_handlers.deleteAddressReq": {
             "type": "object",
             "properties": {
                 "id": {
@@ -605,7 +605,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.loginReq": {
+        "internal_handlers.loginReq": {
             "type": "object",
             "properties": {
                 "password": {
@@ -616,7 +616,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.registerReq": {
+        "internal_handlers.registerReq": {
             "type": "object",
             "properties": {
                 "name": {

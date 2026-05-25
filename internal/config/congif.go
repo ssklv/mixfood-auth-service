@@ -20,17 +20,20 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-func Load() *Config {
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		panic("JWT_SECRET is required")
+func getEnvRequired(key string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		panic(key + " is required")
 	}
+	return value
+}
 
+func Load() *Config {
 	return &Config{
-		ServerPort:  getEnv("SERVER_PORT", "8080"),
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/mixfood?sslmode=disable"),
-		JWTSecret:   jwtSecret,
+		ServerPort:  getEnv("SERVER_PORT", "8081"),
+		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/mixfood_auth?sslmode=disable"),
+		JWTSecret:   getEnvRequired("JWT_SECRET"),
 		AccessTTL:   15 * time.Minute,
-		RefreshTTL:  30 * 24 * time.Hour,
+		RefreshTTL:  7 * 24 * time.Hour,
 	}
 }

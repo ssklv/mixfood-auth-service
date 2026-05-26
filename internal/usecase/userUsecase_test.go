@@ -70,7 +70,7 @@ func TestCreateAddress_ValidationError_StreetHouse(t *testing.T) {
 
 	invalidAddr := &domain.Address{
 		UserID:      42,
-		StreetHouse: "", // пустое поле вызовет ошибку
+		StreetHouse: "",
 	}
 
 	uc := NewUserUsecase(mockUserRepo, mockAddressRepo)
@@ -188,7 +188,6 @@ func TestGetAddresses_Success(t *testing.T) {
 	assert.Equal(t, dbList, list)
 }
 
-// ИСПРАВЛЕНО: Теперь тестирует работу со структурой UpdateAddressParams
 func TestUpdateAddress_Success(t *testing.T) {
 	ctx := context.Background()
 	mockUserRepo := mocks.NewUserRepository(t)
@@ -202,7 +201,6 @@ func TestUpdateAddress_Success(t *testing.T) {
 		Apartment:   &apt,
 	}
 
-	// Ожидаем, что репозиторий примет структуру без указателя, но с прописанным UserID внутри метода usecase
 	expectedRepoParams := domain.UpdateAddressParams{
 		ID:          1,
 		StreetHouse: &street,
@@ -219,7 +217,6 @@ func TestUpdateAddress_Success(t *testing.T) {
 	assert.Equal(t, int64(42), params.UserID)
 }
 
-// ИСПРАВЛЕНО: Тест на ошибку инфраструктуры с новой структурой параметров
 func TestUpdateAddress_NotFound(t *testing.T) {
 	ctx := context.Background()
 	mockUserRepo := mocks.NewUserRepository(t)
@@ -245,13 +242,12 @@ func TestUpdateAddress_NotFound(t *testing.T) {
 	assert.ErrorIs(t, err, ErrAddressNotFound)
 }
 
-// ДОБАВЛЕНО: Тест на ошибку валидации при частичном обновлении
 func TestUpdateAddress_ValidationError_DoorCodeTooLong(t *testing.T) {
 	ctx := context.Background()
 	mockUserRepo := mocks.NewUserRepository(t)
 	mockAddressRepo := mocks.NewAddressRepository(t)
 
-	longCode := strings.Repeat("9", 30) // Лимит 20 символов
+	longCode := strings.Repeat("9", 30)
 	params := &domain.UpdateAddressParams{
 		ID:       1,
 		DoorCode: &longCode,

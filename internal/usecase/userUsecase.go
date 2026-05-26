@@ -61,8 +61,21 @@ func (uu *userUsecase) UpdateProfile(ctx context.Context, params *domain.UpdateU
 	return user, nil
 }
 
+// ИСПРАВЛЕНО: Теперь вызывается корректный валидатор validateStreetHouse
 func (uu *userUsecase) CreateAddress(ctx context.Context, addr *domain.Address) error {
-	if err := validateAddress(addr.StreetHouse); err != nil {
+	if err := validateStreetHouse(addr.StreetHouse); err != nil {
+		return err
+	}
+	if err := validateApartment(addr.Apartment); err != nil {
+		return err
+	}
+	if err := validateEntrance(addr.Entrance); err != nil {
+		return err
+	}
+	if err := validateFloor(addr.Floor); err != nil {
+		return err
+	}
+	if err := validateDoorCode(addr.DoorCode); err != nil {
 		return err
 	}
 
@@ -81,14 +94,37 @@ func (uu *userUsecase) GetAddresses(ctx context.Context, userID int64) ([]domain
 	return addrs, nil
 }
 
-func (uu *userUsecase) UpdateAddress(ctx context.Context, userID int64, addr *domain.Address) error {
-	if err := validateAddress(addr.StreetHouse); err != nil {
-		return err
+// ИСПРАВЛЕНО: Теперь вызывается корректный валидатор validateStreetHouse для указателя
+func (uu *userUsecase) UpdateAddress(ctx context.Context, userID int64, params *domain.UpdateAddressParams) error {
+	if params.StreetHouse != nil {
+		if err := validateStreetHouse(*params.StreetHouse); err != nil {
+			return err
+		}
+	}
+	if params.Apartment != nil {
+		if err := validateApartment(*params.Apartment); err != nil {
+			return err
+		}
+	}
+	if params.Entrance != nil {
+		if err := validateEntrance(*params.Entrance); err != nil {
+			return err
+		}
+	}
+	if params.Floor != nil {
+		if err := validateFloor(*params.Floor); err != nil {
+			return err
+		}
+	}
+	if params.DoorCode != nil {
+		if err := validateDoorCode(*params.DoorCode); err != nil {
+			return err
+		}
 	}
 
-	addr.UserID = userID
+	params.UserID = userID
 
-	err := uu.addressRepo.UpdateAddress(ctx, addr)
+	err := uu.addressRepo.UpdateAddress(ctx, *params)
 	if err != nil {
 		if errors.Is(err, infrastructure.ErrAddressNotFound) {
 			return ErrAddressNotFound

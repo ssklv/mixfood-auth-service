@@ -54,7 +54,7 @@ func (uu *userUsecase) UpdateProfile(ctx context.Context, params *domain.UpdateU
 			return nil, ErrUserNotFound
 		}
 		if errors.Is(err, infrastructure.ErrDuplicateEmail) {
-			return nil, ErrInvalidEmail // или добавить ErrEmailAlreadyExists
+			return nil, ErrInvalidEmail
 		}
 		return nil, ErrInternal
 	}
@@ -99,7 +99,6 @@ func (uu *userUsecase) UpdateAddress(ctx context.Context, userID int64, addr *do
 }
 
 func (uu *userUsecase) DeleteAddress(ctx context.Context, userID int64, addressID int64) error {
-	// Сначала проверяем, существует ли адрес и принадлежит ли он этому пользователю
 	addr, err := uu.addressRepo.GetAddressByID(ctx, addressID)
 	if err != nil {
 		if errors.Is(err, infrastructure.ErrAddressNotFound) {
@@ -109,7 +108,7 @@ func (uu *userUsecase) DeleteAddress(ctx context.Context, userID int64, addressI
 	}
 
 	if addr.UserID != userID {
-		return ErrAddressNotFound // Скрываем существование чужого адреса в целях безопасности
+		return ErrAddressNotFound
 	}
 
 	err = uu.addressRepo.DeleteAddress(ctx, addressID)

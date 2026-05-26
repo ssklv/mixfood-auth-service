@@ -111,16 +111,13 @@ func (_m *AddressRepository) GetAddressesByUserID(ctx context.Context, userID in
 }
 
 // UpdateAddress provides a mock function with given fields: ctx, addr
-func (_m *AddressRepository) UpdateAddress(ctx context.Context, addr *domain.Address) error {
-	ret := _m.Called(ctx, addr)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpdateAddress")
-	}
+// UpdateAddress обеспечивает мокание метода UpdateAddress
+func (_m *AddressRepository) UpdateAddress(ctx context.Context, params domain.UpdateAddressParams) error {
+	ret := _m.Called(ctx, params)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *domain.Address) error); ok {
-		r0 = rf(ctx, addr)
+	if rf, ok := ret.Get(0).(func(context.Context, domain.UpdateAddressParams) error); ok {
+		r0 = rf(ctx, params)
 	} else {
 		r0 = ret.Error(0)
 	}

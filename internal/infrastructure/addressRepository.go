@@ -94,19 +94,32 @@ func (r *AddressRepository) DeleteAddress(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (r *AddressRepository) UpdateAddress(ctx context.Context, addr *domain.Address) error {
-	sql, args, err := r.psql.
+func (r *AddressRepository) UpdateAddress(ctx context.Context, params domain.UpdateAddressParams) error {
+	builder := r.psql.
 		Update("addresses").
-		Set("street_house", addr.StreetHouse).
-		Set("apartment", addr.Apartment).
-		Set("entrance", addr.Entrance).
-		Set("floor", addr.Floor).
-		Set("door_code", addr.DoorCode).
-		Where(sq.Eq{"id": addr.ID, "user_id": addr.UserID}).
-		ToSql()
+		Where(sq.Eq{"id": params.ID, "user_id": params.UserID})
+
+	if params.StreetHouse != nil {
+		builder = builder.Set("street_house", *params.StreetHouse)
+	}
+	if params.Apartment != nil {
+		builder = builder.Set("apartment", *params.Apartment)
+	}
+	if params.Entrance != nil {
+		builder = builder.Set("entrance", *params.Entrance)
+	}
+	if params.Floor != nil {
+		builder = builder.Set("floor", *params.Floor)
+	}
+	if params.DoorCode != nil {
+		builder = builder.Set("door_code", *params.DoorCode)
+	}
+
+	sql, args, err := builder.ToSql()
 	if err != nil {
 		return err
 	}
+
 	res, err := r.db.Exec(ctx, sql, args...)
 	if err != nil {
 		return ErrDatabaseInternal

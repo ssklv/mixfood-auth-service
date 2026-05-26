@@ -1,9 +1,8 @@
 package usecase
 
-//go test -v ./internal/usecase/
-//go test -cover ./internal/usecase/ %
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,6 +50,10 @@ func TestCreateAddress_Success(t *testing.T) {
 	newAddr := &domain.Address{
 		UserID:      42,
 		StreetHouse: "ул. Пушкина, д. 10",
+		Apartment:   "12",
+		Entrance:    "1",
+		Floor:       "3",
+		DoorCode:    "12к345",
 	}
 	mockAddressRepo.On("CreateAddress", ctx, newAddr).Return(nil)
 
@@ -60,14 +63,31 @@ func TestCreateAddress_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestCreateAddress_ValidationError(t *testing.T) {
+func TestCreateAddress_ValidationError_StreetHouse(t *testing.T) {
 	ctx := context.Background()
 	mockUserRepo := mocks.NewUserRepository(t)
 	mockAddressRepo := mocks.NewAddressRepository(t)
 
 	invalidAddr := &domain.Address{
 		UserID:      42,
-		StreetHouse: "",
+		StreetHouse: "", // пустое поле вызовет ошибку
+	}
+
+	uc := NewUserUsecase(mockUserRepo, mockAddressRepo)
+	err := uc.CreateAddress(ctx, invalidAddr)
+
+	assert.ErrorIs(t, err, ErrInvalidAddress)
+}
+
+func TestCreateAddress_ValidationError_ApartmentTooLong(t *testing.T) {
+	ctx := context.Background()
+	mockUserRepo := mocks.NewUserRepository(t)
+	mockAddressRepo := mocks.NewAddressRepository(t)
+
+	invalidAddr := &domain.Address{
+		UserID:      42,
+		StreetHouse: "ул. Пушкина, д. 10",
+		Apartment:   strings.Repeat("A", 25), // Максимум 20, вызовет ошибку
 	}
 
 	uc := NewUserUsecase(mockUserRepo, mockAddressRepo)
@@ -168,31 +188,77 @@ func TestGetAddresses_Success(t *testing.T) {
 	assert.Equal(t, dbList, list)
 }
 
+// ИСПРАВЛЕНО: Теперь тестирует работу со структурой UpdateAddressParams
 func TestUpdateAddress_Success(t *testing.T) {
 	ctx := context.Background()
 	mockUserRepo := mocks.NewUserRepository(t)
 	mockAddressRepo := mocks.NewAddressRepository(t)
 
-	addr := &domain.Address{ID: 1, StreetHouse: "Новая улица"}
-	mockAddressRepo.On("UpdateAddress", ctx, addr).Return(nil)
+	street := "Новая улица"
+	apt := "45"
+	params := &domain.UpdateAddressParams{
+		ID:          1,
+		StreetHouse: &street,
+		Apartment:   &apt,
+	}
+
+	// Ожидаем, что репозиторий примет структуру без указателя, но с прописанным UserID внутри метода usecase
+	expectedRepoParams := domain.UpdateAddressParams{
+		ID:          1,
+		StreetHouse: &street,
+		Apartment:   &apt,
+		UserID:      42,
+	}
+
+	mockAddressRepo.On("UpdateAddress", ctx, expectedRepoParams).Return(nil)
 
 	uc := NewUserUsecase(mockUserRepo, mockAddressRepo)
-	err := uc.UpdateAddress(ctx, int64(42), addr)
+	err := uc.UpdateAddress(ctx, int64(42), params)
 
 	assert.NoError(t, err)
-	assert.Equal(t, int64(42), addr.UserID)
+	assert.Equal(t, int64(42), params.UserID)
 }
 
+// ИСПРАВЛЕНО: Тест на ошибку инфраструктуры с новой структурой параметров
 func TestUpdateAddress_NotFound(t *testing.T) {
 	ctx := context.Background()
 	mockUserRepo := mocks.NewUserRepository(t)
 	mockAddressRepo := mocks.NewAddressRepository(t)
 
-	addr := &domain.Address{ID: 1, StreetHouse: "Новая улица"}
-	mockAddressRepo.On("UpdateAddress", ctx, addr).Return(infrastructure.ErrAddressNotFound)
+	street := "Новая улица"
+	params := &domain.UpdateAddressParams{
+		ID:          1,
+		StreetHouse: &street,
+	}
+
+	expectedRepoParams := domain.UpdateAddressParams{
+		ID:          1,
+		StreetHouse: &street,
+		UserID:      42,
+	}
+
+	mockAddressRepo.On("UpdateAddress", ctx, expectedRepoParams).Return(infrastructure.ErrAddressNotFound)
 
 	uc := NewUserUsecase(mockUserRepo, mockAddressRepo)
-	err := uc.UpdateAddress(ctx, int64(42), addr)
+	err := uc.UpdateAddress(ctx, int64(42), params)
 
 	assert.ErrorIs(t, err, ErrAddressNotFound)
+}
+
+// ДОБАВЛЕНО: Тест на ошибку валидации при частичном обновлении
+func TestUpdateAddress_ValidationError_DoorCodeTooLong(t *testing.T) {
+	ctx := context.Background()
+	mockUserRepo := mocks.NewUserRepository(t)
+	mockAddressRepo := mocks.NewAddressRepository(t)
+
+	longCode := strings.Repeat("9", 30) // Лимит 20 символов
+	params := &domain.UpdateAddressParams{
+		ID:       1,
+		DoorCode: &longCode,
+	}
+
+	uc := NewUserUsecase(mockUserRepo, mockAddressRepo)
+	err := uc.UpdateAddress(ctx, int64(42), params)
+
+	assert.ErrorIs(t, err, ErrInvalidAddress)
 }

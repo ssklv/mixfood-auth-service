@@ -18,7 +18,7 @@ type AddressRepository interface {
 	CreateAddress(ctx context.Context, addr *domain.Address) error
 	GetAddressesByUserID(ctx context.Context, userID int64) ([]domain.Address, error)
 	GetAddressByID(ctx context.Context, id int64) (*domain.Address, error)
-	UpdateAddress(ctx context.Context, addr *domain.Address) error
+	UpdateAddress(ctx context.Context, params domain.UpdateAddressParams) error
 	DeleteAddress(ctx context.Context, id int64) error
 }
 
@@ -28,7 +28,6 @@ type SessionRepository interface {
 	DeleteSession(ctx context.Context, refreshToken string) error
 }
 
-// AuthUsecase занимается исключительно сессиями и доступом
 type AuthUsecase interface {
 	Register(ctx context.Context, phone, password, name string) (accessToken string, refreshToken string, err error)
 	Login(ctx context.Context, phone, password string) (accessToken string, refreshToken string, err error)
@@ -37,18 +36,15 @@ type AuthUsecase interface {
 	ValidateToken(ctx context.Context, tokenString string) (*domain.User, error)
 }
 
-// ////
 type UserUsecase interface {
 	GetProfile(ctx context.Context, id int64) (*domain.User, error)
 	UpdateProfile(ctx context.Context, params *domain.UpdateUserParams) (*domain.User, error)
-
 	CreateAddress(ctx context.Context, addr *domain.Address) error
 	GetAddresses(ctx context.Context, userID int64) ([]domain.Address, error)
-	UpdateAddress(ctx context.Context, userID int64, addr *domain.Address) error
+	UpdateAddress(ctx context.Context, userID int64, params *domain.UpdateAddressParams) error
 	DeleteAddress(ctx context.Context, userID int64, addressID int64) error
 }
 
-// ////
 type TokenProvider interface {
 	GenerateAccessToken(userID int64, role string) (string, error)
 	GenerateRefreshToken() (string, error)

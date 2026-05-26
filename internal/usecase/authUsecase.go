@@ -74,10 +74,10 @@ func (au *authUsecase) Register(ctx context.Context, phone, password, name strin
 
 	_, err := au.userRepo.GetUserByPhone(ctx, phone)
 	if err == nil {
-		// Пользователь нашелся без ошибок -> значит, номер занят
+
 		return "", "", ErrUserAlreadyExists
 	}
-	// Если ошибка КРОМЕ "UserNotFound" — значит упала база данных
+
 	if !errors.Is(err, infrastructure.ErrUserNotFound) {
 		return "", "", ErrInternal
 	}

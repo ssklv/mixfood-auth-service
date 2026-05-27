@@ -33,7 +33,7 @@ func Load() *Config {
 		ServerPort:  getEnv("SERVER_PORT", "8081"),
 		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/mixfood_auth?sslmode=disable"),
 		JWTSecret:   getEnvRequired("JWT_SECRET"),
-		AccessTTL:   15 * time.Minute,
+		AccessTTL:   15 * time.Minute, //time.ParseDuration(os.Getenv("ACCESS_TTL"))
 		RefreshTTL:  7 * 24 * time.Hour,
 	}
 }

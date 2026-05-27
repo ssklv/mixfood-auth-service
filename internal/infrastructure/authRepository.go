@@ -7,7 +7,7 @@ import (
 
 type AuthRepository struct {
 	Users    *UsersRepository
-	Sessions *SessionsRepository
+	Sessions *SessionRepository
 	Address  *AddressRepository
 }
 

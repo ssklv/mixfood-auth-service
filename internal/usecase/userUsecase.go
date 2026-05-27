@@ -122,7 +122,7 @@ func (uu *userUsecase) UpdateAddress(ctx context.Context, userID int64, params *
 
 	params.UserID = userID
 
-	err := uu.addressRepo.UpdateAddress(ctx, *params)
+	err := uu.addressRepo.UpdateAddress(ctx, params)
 	if err != nil {
 		if errors.Is(err, infrastructure.ErrAddressNotFound) {
 			return ErrAddressNotFound

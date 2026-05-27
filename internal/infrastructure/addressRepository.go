@@ -116,7 +116,7 @@ func (r *AddressRepository) DeleteAddress(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (r *AddressRepository) UpdateAddress(ctx context.Context, params domain.UpdateAddressParams) error {
+func (r *AddressRepository) UpdateAddress(ctx context.Context, params *domain.UpdateAddressParams) error {
 	builder := r.psql.
 		Update("addresses").
 		Where(sq.Eq{"id": params.ID, "user_id": params.UserID})

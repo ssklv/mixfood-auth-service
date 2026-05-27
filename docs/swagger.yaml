@@ -1,6 +1,6 @@
 basePath: /
 definitions:
-  github_com_ssklv_mixfood-auth-service_internal_domain.Address:
+  domain.Address:
     properties:
       apartment:
         type: string
@@ -17,7 +17,20 @@ definitions:
       user_id:
         type: integer
     type: object
-  github_com_ssklv_mixfood-auth-service_internal_domain.UpdateUserParams:
+  domain.UpdateAddressParams:
+    properties:
+      apartment:
+        type: string
+      door_code:
+        type: string
+      entrance:
+        type: string
+      floor:
+        type: string
+      street_house:
+        type: string
+    type: object
+  domain.UpdateUserParams:
     properties:
       email:
         type: string
@@ -26,7 +39,7 @@ definitions:
       phone:
         type: string
     type: object
-  github_com_ssklv_mixfood-auth-service_internal_domain.User:
+  domain.User:
     properties:
       createdAt:
         type: string
@@ -39,11 +52,11 @@ definitions:
       phone:
         type: string
       role:
-        $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.UserRole'
+        $ref: '#/definitions/domain.UserRole'
       updatedAt:
         type: string
     type: object
-  github_com_ssklv_mixfood-auth-service_internal_domain.UserRole:
+  domain.UserRole:
     enum:
     - user
     - admin
@@ -51,36 +64,46 @@ definitions:
     x-enum-varnames:
     - RoleUser
     - RoleAdmin
-  internal_handlers.ErrorResponse:
+  handlers.ErrorResponse:
     properties:
       error:
         type: string
     type: object
-  internal_handlers.deleteAddressReq:
+  handlers.deleteAddressReq:
     properties:
       id:
         type: integer
     type: object
-  internal_handlers.loginReq:
+  handlers.loginReq:
     properties:
       password:
+        example: secret123
         type: string
       phone:
+        example: "79991234567"
         type: string
     type: object
-  internal_handlers.registerReq:
+  handlers.registerReq:
     properties:
       name:
+        example: Ivan
         type: string
       password:
+        example: secret123
         type: string
       phone:
+        example: "79991234567"
+        type: string
+    type: object
+  handlers.tokenResponse:
+    properties:
+      accessToken:
         type: string
     type: object
 host: localhost:8080
 info:
   contact: {}
-  description: API для аутентификации и работы с пользователями
+  description: Authentication and user management microservice API.
   title: Mixfood Auth Service API
   version: "1.0"
 paths:
@@ -88,325 +111,317 @@ paths:
     post:
       consumes:
       - application/json
-      description: Аутентификация по номеру телефона и паролю. Устанавливает токены
-        в httpOnly куки.
+      description: Authenticates user via phone and password. Sets authentication
+        tokens in httpOnly cookies.
       parameters:
-      - description: Учетные данные
+      - description: User Credentials
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/internal_handlers.loginReq'
+          $ref: '#/definitions/handlers.loginReq'
       produces:
       - application/json
       responses:
         "200":
-          description: Возвращает accessToken в формате JSON
+          description: Returns accessToken in JSON format
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/handlers.tokenResponse'
         "400":
-          description: invalid request body
+          description: Invalid request body
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
-          description: Неверный номер телефона или пароль
+          description: Invalid phone number or password
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: internal server error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      summary: Авторизация (Вход)
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: User Login
       tags:
       - Auth
   /api/auth/logout:
     post:
-      description: Удаляет сессию из базы данных и инвалидирует авторизационные куки
-        на клиенте.
+      description: Deletes active session from database and clears authorization cookies
+        on the client side.
       responses:
         "204":
-          description: Успешный выход без тела ответа
+          description: Successfully logged out (No Content)
         "404":
-          description: active session not found
+          description: Active session not found
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: failed to logout
+          description: Failed to logout
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      - CookieAuth: []
-      summary: Выход из системы
+      summary: User Logout
       tags:
       - Auth
   /api/auth/refresh:
     get:
-      description: Принимает refresh_token из куки, проверяет его валидность и генерирует
-        новую пару токенов.
+      description: Accepts refresh_token from cookies, validates it, and issues a
+        new pair of tokens.
       responses:
         "200":
-          description: Токены успешно обновлены
+          description: Tokens successfully refreshed
         "401":
-          description: session expired / invalid
+          description: Session expired or invalid
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      summary: Обновление сессии (Refresh)
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Refresh Session Tokens
       tags:
       - Auth
   /api/auth/register:
     post:
       consumes:
       - application/json
-      description: Создание нового аккаунта, генерация и автоматическая установка
-        JWT-токенов в куки.
+      description: Creates a new user account, generates JWT tokens, and sets them
+        in httpOnly cookies.
       parameters:
-      - description: Данные для регистрации
+      - description: Registration Data
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/internal_handlers.registerReq'
+          $ref: '#/definitions/handlers.registerReq'
       produces:
       - application/json
       responses:
         "201":
-          description: Возвращает accessToken в формате JSON
+          description: Returns accessToken in JSON format
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/handlers.tokenResponse'
         "400":
-          description: Невалидный формат запроса или слабый пароль
+          description: Invalid request body or weak password
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "409":
-          description: Этот номер телефона уже зарегистрирован
+          description: Phone number already registered
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: Внутренняя ошибка сервера
+          description: Internal server error
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
-      summary: Регистрация пользователя
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: User Registration
       tags:
       - Auth
   /api/user/address:
     delete:
       consumes:
       - application/json
-      description: Удаление адреса доставки из списка пользователя по ID.
+      description: Removes a delivery address from the user's list by its ID.
       parameters:
-      - description: ID адреса для удаления
+      - description: Target address ID to delete
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/internal_handlers.deleteAddressReq'
+          $ref: '#/definitions/handlers.deleteAddressReq'
+      produces:
+      - application/json
       responses:
         "204":
-          description: Адрес успешно удален (No Content)
+          description: Address successfully deleted (No Content)
         "400":
-          description: invalid request body
+          description: Invalid request body or non-positive ID
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
-          description: address not found
+          description: Address not found
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: failed to delete address
+          description: Failed to delete address
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      - CookieAuth: []
-      summary: Удалить адрес
+      summary: Delete Delivery Address
       tags:
       - User
     post:
       consumes:
       - application/json
-      description: Добавление нового адреса доставки, связанного с текущим пользователем.
+      description: Adds a new delivery address associated with the current user.
       parameters:
-      - description: Данные адреса
+      - description: Address Data
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address'
+          $ref: '#/definitions/domain.Address'
       produces:
       - application/json
       responses:
         "201":
-          description: Успешно созданный адрес
+          description: Successfully created address object
           schema:
-            $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address'
+            $ref: '#/definitions/domain.Address'
         "400":
-          description: Невалидный адрес
+          description: Invalid address validation parameters
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: failed to create address
+          description: Failed to create address
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      - CookieAuth: []
-      summary: Создать адрес
+      summary: Create Delivery Address
       tags:
       - User
     put:
       consumes:
       - application/json
-      description: Модификация полей существующего адреса доставки.
+      description: Modifies fields of an existing delivery address.
       parameters:
-      - description: Данные адреса (включая ID адреса)
+      - description: Address Data for Partial Update
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address'
+          $ref: '#/definitions/domain.UpdateAddressParams'
+      produces:
+      - application/json
       responses:
         "200":
-          description: Адрес успешно обновлен
+          description: Address successfully updated
         "400":
-          description: Невалидный адрес
+          description: Invalid address validation parameters
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
-          description: address not found
+          description: Address not found
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: failed to update address
+          description: Failed to update address
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      - CookieAuth: []
-      summary: Обновить адрес
+      summary: Update Delivery Address
       tags:
       - User
   /api/user/addresses:
     get:
-      description: Получение всех сохраненных адресов доставки авторизованного пользователя.
+      description: Retrieves all saved delivery addresses for the authenticated user.
       produces:
       - application/json
       responses:
         "200":
-          description: Массив адресов
+          description: Array of delivery addresses
           schema:
             items:
-              $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.Address'
+              $ref: '#/definitions/domain.Address'
             type: array
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: internal error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      - CookieAuth: []
-      summary: Список адресов
+      summary: Get Delivery Addresses
       tags:
       - User
   /api/user/me:
     get:
-      description: Возвращает данные профиля авторизованного пользователя на основе
-        ID из токена.
+      description: Returns profile data of the authenticated user based on ID from
+        token.
       produces:
       - application/json
       responses:
         "200":
-          description: Объект пользователя
+          description: User profile object
           schema:
-            $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.User'
+            $ref: '#/definitions/domain.User'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
-          description: user not found
+          description: User not found
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: internal error
+          description: Internal server error
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      - CookieAuth: []
-      summary: Профиль текущего пользователя
+      summary: Get Current User Profile
       tags:
       - User
   /api/user/profile:
     patch:
       consumes:
       - application/json
-      description: Частичное обновление полей профиля пользователя (имя, телефон,
-        email).
+      description: Partially updates user profile fields (name, phone, email).
       parameters:
-      - description: Данные профиля
+      - description: Profile Update Parameters
         in: body
         name: input
         required: true
         schema:
-          $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.UpdateUserParams'
+          $ref: '#/definitions/domain.UpdateUserParams'
       produces:
       - application/json
       responses:
         "200":
-          description: Обновленный объект пользователя
+          description: Updated user object
           schema:
-            $ref: '#/definitions/github_com_ssklv_mixfood-auth-service_internal_domain.User'
+            $ref: '#/definitions/domain.User'
         "400":
-          description: Ошибка валидации переданных параметров
+          description: Validation error for provided parameters
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
-          description: user not found
+          description: User not found
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
-          description: failed to update profile
+          description: Failed to update profile
           schema:
-            $ref: '#/definitions/internal_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      - CookieAuth: []
-      summary: Обновить профиль
+      summary: Update User Profile
       tags:
       - User
 securityDefinitions:
   BearerAuth:
-    description: 'Введите токен в формате: Bearer <token>'
+    description: 'Enter token in format: Bearer <token>'
     in: header
     name: Authorization
     type: apiKey
   CookieAuth:
-    description: Токен доступа (access_token), автоматически извлекаемый из Cookie
+    description: Access token automatically extracted from httpOnly Cookies
     in: cookie
     name: access_token
     type: apiKey

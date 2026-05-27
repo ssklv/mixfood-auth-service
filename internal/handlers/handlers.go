@@ -11,6 +11,7 @@ type Handler interface {
 	RegisterRoutes(router fiber.Router, authMiddleware fiber.Handler)
 }
 
+// //
 type Logger interface {
 	Error(msg string, fields ...any)
 	Warn(msg string, fields ...any)

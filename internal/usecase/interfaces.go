@@ -18,7 +18,7 @@ type AddressRepository interface {
 	CreateAddress(ctx context.Context, addr *domain.Address) error
 	GetAddressesByUserID(ctx context.Context, userID int64) ([]domain.Address, error)
 	GetAddressByID(ctx context.Context, id int64) (*domain.Address, error)
-	UpdateAddress(ctx context.Context, params domain.UpdateAddressParams) error
+	UpdateAddress(ctx context.Context, params *domain.UpdateAddressParams) error
 	DeleteAddress(ctx context.Context, id int64) error
 }
 

@@ -1,6 +1,5 @@
 package main
 
-//http://localhost:8080/swagger/
 import (
 	"fmt"
 
@@ -33,19 +32,19 @@ func (za *zapAdapter) Warn(msg string, fields ...any) {
 
 // @title                       Mixfood Auth Service API
 // @version                     1.0
-// @description                 API для аутентификации и работы с пользователями
+// @description                 Authentication and user management microservice API.
 // @host                        localhost:8080
 // @BasePath                    /
 
 // @securityDefinitions.apikey  BearerAuth
 // @in                          header
 // @name                        Authorization
-// @description                 Введите токен в формате: Bearer <token>
+// @description                 Enter token in format: Bearer <token>
 
 // @securityDefinitions.apikey  CookieAuth
 // @in                          cookie
 // @name                        access_token
-// @description                 Токен доступа (access_token), автоматически извлекаемый из Cookie
+// @description                 Access token automatically extracted from httpOnly Cookies
 func main() {
 	logger.InitLogger()
 	if logger.Logger != nil {
@@ -53,7 +52,7 @@ func main() {
 	}
 
 	if err := godotenv.Load(); err != nil && logger.Logger != nil {
-		logger.Logger.Warn("Файл .env не найден")
+		logger.Logger.Warn(".env file not found")
 	}
 
 	cfg := config.Load()
@@ -61,7 +60,7 @@ func main() {
 
 	conn, err := infrastructure.Connect(cfg.DatabaseURL)
 	if err != nil && logger.Logger != nil {
-		logger.Logger.Fatal("Ошибка подключения к БД: " + err.Error())
+		logger.Logger.Fatal("Database connection error: " + err.Error())
 	}
 	defer conn.Close()
 
@@ -84,10 +83,10 @@ func main() {
 	handlers.ConfigureApp(app, authUsecase, userUsecase, tokenProvider, logAdapter)
 
 	if logger.Logger != nil {
-		logger.Logger.Info(fmt.Sprintf("Сервер запущен на порту :%s", cfg.ServerPort))
+		logger.Logger.Info(fmt.Sprintf("Server is running on port :%s", cfg.ServerPort))
 	}
 
 	if err := app.Listen(":" + cfg.ServerPort); err != nil && logger.Logger != nil {
-		logger.Logger.Fatal("Ошибка сервера: " + err.Error())
+		logger.Logger.Fatal("Server error: " + err.Error())
 	}
 }

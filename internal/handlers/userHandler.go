@@ -13,6 +13,10 @@ type userHandler struct {
 	log    Logger
 }
 
+type deleteAddressReq struct {
+	ID int64 `json:"id"`
+}
+
 func NewUserHandler(userUC usecase.UserUsecase, log Logger) *userHandler {
 	return &userHandler{
 		userUC: userUC,
@@ -31,16 +35,15 @@ func (h *userHandler) RegisterRoutes(router fiber.Router, authMiddleware fiber.H
 	user.Delete("/address", h.deleteAddress)
 }
 
-// @Summary      Профиль текущего пользователя
-// @Description  Возвращает данные профиля авторизованного пользователя на основе ID из токена.
+// @Summary      Get Current User Profile
+// @Description  Returns profile data of the authenticated user based on ID from token.
 // @Tags         User
 // @Security     BearerAuth
-// @Security     CookieAuth
 // @Produce      json
-// @Success      200    {object}  domain.User   "Объект пользователя"
+// @Success      200    {object}  domain.User   "User profile object"
 // @Failure      401    {object}  ErrorResponse "Unauthorized"
-// @Failure      404    {object}  ErrorResponse "user not found"
-// @Failure      500    {object}  ErrorResponse "internal error"
+// @Failure      404    {object}  ErrorResponse "User not found"
+// @Failure      500    {object}  ErrorResponse "Internal server error"
 // @Router       /api/user/me [get]
 func (h *userHandler) getMyProfile(c fiber.Ctx) error {
 	userID := c.Locals("userID").(int64)
@@ -54,19 +57,18 @@ func (h *userHandler) getMyProfile(c fiber.Ctx) error {
 	return c.JSON(user)
 }
 
-// @Summary      Обновить профиль
-// @Description  Частичное обновление полей профиля пользователя (имя, телефон, email).
+// @Summary      Update User Profile
+// @Description  Partially updates user profile fields (name, phone, email).
 // @Tags         User
 // @Security     BearerAuth
-// @Security     CookieAuth
 // @Accept       json
 // @Produce      json
-// @Param        input  body      domain.UpdateUserParams  true  "Данные профиля"
-// @Success      200    {object}  domain.User              "Обновленный объект пользователя"
-// @Failure      400    {object}  ErrorResponse            "Ошибка валидации переданных параметров"
+// @Param        input  body      domain.UpdateUserParams  true  "Profile Update Parameters"
+// @Success      200    {object}  domain.User              "Updated user object"
+// @Failure      400    {object}  ErrorResponse            "Validation error for provided parameters"
 // @Failure      401    {object}  ErrorResponse            "Unauthorized"
-// @Failure      404    {object}  ErrorResponse            "user not found"
-// @Failure      500    {object}  ErrorResponse            "failed to update profile"
+// @Failure      404    {object}  ErrorResponse            "User not found"
+// @Failure      500    {object}  ErrorResponse            "Failed to update profile"
 // @Router       /api/user/profile [patch]
 func (h *userHandler) updateProfile(c fiber.Ctx) error {
 	userID := c.Locals("userID").(int64)
@@ -89,18 +91,17 @@ func (h *userHandler) updateProfile(c fiber.Ctx) error {
 	return c.JSON(user)
 }
 
-// @Summary      Создать адрес
-// @Description  Добавление нового адреса доставки, связанного с текущим пользователем.
+// @Summary      Create Delivery Address
+// @Description  Adds a new delivery address associated with the current user.
 // @Tags         User
 // @Security     BearerAuth
-// @Security     CookieAuth
 // @Accept       json
 // @Produce      json
-// @Param        input  body      domain.Address  true  "Данные адреса"
-// @Success      201    {object}  domain.Address        "Успешно созданный адрес"
-// @Failure      400    {object}  ErrorResponse         "Невалидный адрес"
+// @Param        input  body      domain.Address  true  "Address Data"
+// @Success      201    {object}  domain.Address        "Successfully created address object"
+// @Failure      400    {object}  ErrorResponse         "Invalid address validation parameters"
 // @Failure      401    {object}  ErrorResponse         "Unauthorized"
-// @Failure      500    {object}  ErrorResponse         "failed to create address"
+// @Failure      500    {object}  ErrorResponse         "Failed to create address"
 // @Router       /api/user/address [post]
 func (h *userHandler) createAddress(c fiber.Ctx) error {
 	userID := c.Locals("userID").(int64)
@@ -119,15 +120,14 @@ func (h *userHandler) createAddress(c fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(addr)
 }
 
-// @Summary      Список адресов
-// @Description  Получение всех сохраненных адресов доставки авторизованного пользователя.
+// @Summary      Get Delivery Addresses
+// @Description  Retrieves all saved delivery addresses for the authenticated user.
 // @Tags         User
 // @Security     BearerAuth
-// @Security     CookieAuth
 // @Produce      json
-// @Success      200    {array}   domain.Address "Массив адресов"
-// @Failure      401    {object}  ErrorResponse  "Unauthorized"
-// @Failure      500    {object}  ErrorResponse  "internal error"
+// @Success      200    {array}   domain.Address  "Array of delivery addresses"
+// @Failure      401    {object}  ErrorResponse   "Unauthorized"
+// @Failure      500    {object}  ErrorResponse   "Internal server error"
 // @Router       /api/user/addresses [get]
 func (h *userHandler) getMyAddresses(c fiber.Ctx) error {
 	userID := c.Locals("userID").(int64)
@@ -139,18 +139,18 @@ func (h *userHandler) getMyAddresses(c fiber.Ctx) error {
 	return c.JSON(addresses)
 }
 
-// @Summary      Обновить адрес
-// @Description  Модификация полей существующего адреса доставки.
+// @Summary      Update Delivery Address
+// @Description  Modifies fields of an existing delivery address.
 // @Tags         User
 // @Security     BearerAuth
-// @Security     CookieAuth
 // @Accept       json
-// @Param        input  body      domain.Address  true  "Данные адреса (включая ID адреса)"
-// @Success      200    "Адрес успешно обновлен"
-// @Failure      400    {object}  ErrorResponse   "Невалидный адрес"
-// @Failure      401    {object}  ErrorResponse   "Unauthorized"
-// @Failure      404    {object}  ErrorResponse   "address not found"
-// @Failure      500    {object}  ErrorResponse   "failed to update address"
+// @Produce      json
+// @Param        input  body      domain.UpdateAddressParams  true  "Address Data for Partial Update"
+// @Success      200    "Address successfully updated"
+// @Failure      400    {object}  ErrorResponse               "Invalid address validation parameters"
+// @Failure      401    {object}  ErrorResponse               "Unauthorized"
+// @Failure      404    {object}  ErrorResponse               "Address not found"
+// @Failure      500    {object}  ErrorResponse               "Failed to update address"
 // @Router       /api/user/address [put]
 func (h *userHandler) updateAddress(c fiber.Ctx) error {
 	userID := c.Locals("userID").(int64)
@@ -172,28 +172,28 @@ func (h *userHandler) updateAddress(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-type deleteAddressReq struct {
-	ID int64 `json:"id"`
-}
-
-// @Summary      Удалить адрес
-// @Description  Удаление адреса доставки из списка пользователя по ID.
+// @Summary      Delete Delivery Address
+// @Description  Removes a delivery address from the user's list by its ID.
 // @Tags         User
 // @Security     BearerAuth
-// @Security     CookieAuth
 // @Accept       json
-// @Param        input  body      deleteAddressReq  true  "ID адреса для удаления"
-// @Success      204    "Адрес успешно удален (No Content)"
-// @Failure      400    {object}  ErrorResponse "invalid request body"
-// @Failure      401    {object}  ErrorResponse "Unauthorized"
-// @Failure      404    {object}  ErrorResponse "address not found"
-// @Failure      500    {object}  ErrorResponse "failed to delete address"
+// @Produce      json
+// @Param        input  body      deleteAddressReq  true  "Target address ID to delete"
+// @Success      204    "Address successfully deleted (No Content)"
+// @Failure      400    {object}  ErrorResponse     "Invalid request body or non-positive ID"
+// @Failure      401    {object}  ErrorResponse     "Unauthorized"
+// @Failure      404    {object}  ErrorResponse     "Address not found"
+// @Failure      500    {object}  ErrorResponse     "Failed to delete address"
 // @Router       /api/user/address [delete]
 func (h *userHandler) deleteAddress(c fiber.Ctx) error {
 	userID := c.Locals("userID").(int64)
 	var req deleteAddressReq
 	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: "invalid request body"})
+	}
+
+	if req.ID <= 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: "invalid address id"})
 	}
 
 	if err := h.userUC.DeleteAddress(c.Context(), userID, req.ID); err != nil {

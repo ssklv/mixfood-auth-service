@@ -15,14 +15,18 @@ type authHandler struct {
 }
 
 type registerReq struct {
-	Phone    string `json:"phone"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
+	Phone    string `json:"phone" example:"79991234567"`
+	Password string `json:"password" example:"secret123"`
+	Name     string `json:"name" example:"Ivan"`
 }
 
 type loginReq struct {
-	Phone    string `json:"phone"`
-	Password string `json:"password"`
+	Phone    string `json:"phone" example:"79991234567"`
+	Password string `json:"password" example:"secret123"`
+}
+
+type tokenResponse struct {
+	AccessToken string `json:"accessToken"`
 }
 
 func NewAuthHandler(authUC usecase.AuthUsecase, tp usecase.TokenProvider, log Logger) *authHandler {
@@ -43,16 +47,16 @@ func (h *authHandler) RegisterRoutes(router fiber.Router, authMiddleware fiber.H
 	auth.Post("/logout", authMiddleware, h.logout)
 }
 
-// @Summary      Регистрация пользователя
-// @Description  Создание нового аккаунта, генерация и автоматическая установка JWT-токенов в куки.
+// @Summary      User Registration
+// @Description  Creates a new user account, generates JWT tokens, and sets them in httpOnly cookies.
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param        input  body      registerReq  true  "Данные для регистрации"
-// @Success      201    {object}  map[string]string   "Возвращает accessToken в формате JSON"
-// @Failure      400    {object}  ErrorResponse       "Невалидный формат запроса или слабый пароль"
-// @Failure      409    {object}  ErrorResponse       "Этот номер телефона уже зарегистрирован"
-// @Failure      500    {object}  ErrorResponse       "Внутренняя ошибка сервера"
+// @Param        input  body      registerReq     true  "Registration Data"
+// @Success      201    {object}  tokenResponse         "Returns accessToken in JSON format"
+// @Failure      400    {object}  ErrorResponse         "Invalid request body or weak password"
+// @Failure      409    {object}  ErrorResponse         "Phone number already registered"
+// @Failure      500    {object}  ErrorResponse         "Internal server error"
 // @Router       /api/auth/register [post]
 func (h *authHandler) register(c fiber.Ctx) error {
 	var req registerReq
@@ -64,7 +68,7 @@ func (h *authHandler) register(c fiber.Ctx) error {
 	if err != nil {
 		h.log.Error("Registration error", "err", err.Error())
 		if errors.Is(err, usecase.ErrUserAlreadyExists) {
-			return c.Status(fiber.StatusConflict).JSON(ErrorResponse{Error: "Этот номер телефона уже зарегистрирован"})
+			return c.Status(fiber.StatusConflict).JSON(ErrorResponse{Error: "user already exists"})
 		}
 		if errors.Is(err, usecase.ErrInvalidPhone) || errors.Is(err, usecase.ErrInvalidName) || errors.Is(err, usecase.ErrInvalidPasswordTooWeak) {
 			return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: err.Error()})
@@ -73,21 +77,19 @@ func (h *authHandler) register(c fiber.Ctx) error {
 	}
 
 	h.setAuthCookies(c, accessToken, refreshToken)
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"accessToken": accessToken,
-	})
+	return c.Status(fiber.StatusCreated).JSON(tokenResponse{AccessToken: accessToken})
 }
 
-// @Summary      Авторизация (Вход)
-// @Description  Аутентификация по номеру телефона и паролю. Устанавливает токены в httpOnly куки.
+// @Summary      User Login
+// @Description  Authenticates user via phone and password. Sets authentication tokens in httpOnly cookies.
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param        input  body      loginReq  true  "Учетные данные"
-// @Success      200    {object}  map[string]string "Возвращает accessToken в формате JSON"
-// @Failure      400    {object}  ErrorResponse     "invalid request body"
-// @Failure      401    {object}  ErrorResponse     "Неверный номер телефона или пароль"
-// @Failure      500    {object}  ErrorResponse     "internal server error"
+// @Param        input  body      loginReq        true  "User Credentials"
+// @Success      200    {object}  tokenResponse         "Returns accessToken in JSON format"
+// @Failure      400    {object}  ErrorResponse         "Invalid request body"
+// @Failure      401    {object}  ErrorResponse         "Invalid phone number or password"
+// @Failure      500    {object}  ErrorResponse         "Internal server error"
 // @Router       /api/auth/login [post]
 func (h *authHandler) login(c fiber.Ctx) error {
 	var req loginReq
@@ -99,25 +101,22 @@ func (h *authHandler) login(c fiber.Ctx) error {
 	if err != nil {
 		h.log.Warn("Login failed", "phone", req.Phone, "err", err.Error())
 		if errors.Is(err, usecase.ErrInvalidCredentials) {
-			return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "Неверный номер телефона или пароль"})
+			return c.Status(fiber.StatusUnauthorized).JSON(ErrorResponse{Error: "invalid phone or password"})
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(ErrorResponse{Error: "internal server error"})
 	}
 
 	h.setAuthCookies(c, accessToken, refreshToken)
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"accessToken": accessToken,
-	})
+	return c.Status(fiber.StatusOK).JSON(tokenResponse{AccessToken: accessToken})
 }
 
-// @Summary      Выход из системы
-// @Description  Удаляет сессию из базы данных и инвалидирует авторизационные куки на клиенте.
+// @Summary      User Logout
+// @Description  Deletes active session from database and clears authorization cookies on the client side.
 // @Tags         Auth
 // @Security     BearerAuth
-// @Security     CookieAuth
-// @Success      204    "Успешный выход без тела ответа"
-// @Failure      404    {object}  ErrorResponse "active session not found"
-// @Failure      500    {object}  ErrorResponse "failed to logout"
+// @Success      204    "Successfully logged out (No Content)"
+// @Failure      404    {object}  ErrorResponse "Active session not found"
+// @Failure      500    {object}  ErrorResponse "Failed to logout"
 // @Router       /api/auth/logout [post]
 func (h *authHandler) logout(c fiber.Ctx) error {
 	refreshToken := c.Cookies(RefreshCookie)
@@ -136,11 +135,11 @@ func (h *authHandler) logout(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-// @Summary      Обновление сессии (Refresh)
-// @Description  Принимает refresh_token из куки, проверяет его валидность и генерирует новую пару токенов.
+// @Summary      Refresh Session Tokens
+// @Description  Accepts refresh_token from cookies, validates it, and issues a new pair of tokens.
 // @Tags         Auth
-// @Success      200    "Токены успешно обновлены"
-// @Failure      401    {object}  ErrorResponse "session expired / invalid"
+// @Success      200    "Tokens successfully refreshed"
+// @Failure      401    {object}  ErrorResponse "Session expired or invalid"
 // @Router       /api/auth/refresh [get]
 func (h *authHandler) refresh(c fiber.Ctx) error {
 	oldRefreshToken := c.Cookies(RefreshCookie)

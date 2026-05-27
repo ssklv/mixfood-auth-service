@@ -10,16 +10,16 @@ import (
 	"github.com/ssklv/mixfood-auth-service/internal/domain"
 )
 
-type SessionsRepository struct {
+type SessionRepository struct {
 	db   *pgxpool.Pool
 	psql sq.StatementBuilderType
 }
 
-func NewSessionRepository(db *pgxpool.Pool, psql sq.StatementBuilderType) *SessionsRepository {
-	return &SessionsRepository{db: db, psql: psql}
+func NewSessionRepository(db *pgxpool.Pool, psql sq.StatementBuilderType) *SessionRepository {
+	return &SessionRepository{db: db, psql: psql}
 }
 
-func (r *SessionsRepository) SaveSession(ctx context.Context, session *domain.UserSession) error {
+func (r *SessionRepository) SaveSession(ctx context.Context, session *domain.UserSession) error {
 	sql, args, err := r.psql.
 		Insert("sessions").
 		Columns("user_id", "refresh_token", "expires_at").
@@ -35,7 +35,7 @@ func (r *SessionsRepository) SaveSession(ctx context.Context, session *domain.Us
 	return nil
 }
 
-func (r *SessionsRepository) GetSessionByToken(ctx context.Context, token string) (*domain.UserSession, error) {
+func (r *SessionRepository) GetSessionByToken(ctx context.Context, token string) (*domain.UserSession, error) {
 	sql, args, err := r.psql.
 		Select("user_id", "refresh_token", "expires_at").
 		From("sessions").
@@ -55,7 +55,7 @@ func (r *SessionsRepository) GetSessionByToken(ctx context.Context, token string
 	return s, nil
 }
 
-func (r *SessionsRepository) DeleteSession(ctx context.Context, token string) error {
+func (r *SessionRepository) DeleteSession(ctx context.Context, token string) error {
 	sql, args, err := r.psql.
 		Delete("sessions").
 		Where(sq.Eq{"refresh_token": token}).

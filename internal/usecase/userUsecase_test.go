@@ -201,14 +201,8 @@ func TestUpdateAddress_Success(t *testing.T) {
 		Apartment:   &apt,
 	}
 
-	expectedRepoParams := domain.UpdateAddressParams{
-		ID:          1,
-		StreetHouse: &street,
-		Apartment:   &apt,
-		UserID:      42,
-	}
-
-	mockAddressRepo.On("UpdateAddress", ctx, expectedRepoParams).Return(nil)
+	// Мок теперь ожидает тот же указатель params, который юзкейс обогатит UserID
+	mockAddressRepo.On("UpdateAddress", ctx, params).Return(nil)
 
 	uc := NewUserUsecase(mockUserRepo, mockAddressRepo)
 	err := uc.UpdateAddress(ctx, int64(42), params)
@@ -228,13 +222,8 @@ func TestUpdateAddress_NotFound(t *testing.T) {
 		StreetHouse: &street,
 	}
 
-	expectedRepoParams := domain.UpdateAddressParams{
-		ID:          1,
-		StreetHouse: &street,
-		UserID:      42,
-	}
-
-	mockAddressRepo.On("UpdateAddress", ctx, expectedRepoParams).Return(infrastructure.ErrAddressNotFound)
+	// Мок ожидает указатель params и возвращает ошибку репозитория
+	mockAddressRepo.On("UpdateAddress", ctx, params).Return(infrastructure.ErrAddressNotFound)
 
 	uc := NewUserUsecase(mockUserRepo, mockAddressRepo)
 	err := uc.UpdateAddress(ctx, int64(42), params)

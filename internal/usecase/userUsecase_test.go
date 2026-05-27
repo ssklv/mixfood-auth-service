@@ -201,7 +201,6 @@ func TestUpdateAddress_Success(t *testing.T) {
 		Apartment:   &apt,
 	}
 
-	// Мок теперь ожидает тот же указатель params, который юзкейс обогатит UserID
 	mockAddressRepo.On("UpdateAddress", ctx, params).Return(nil)
 
 	uc := NewUserUsecase(mockUserRepo, mockAddressRepo)
@@ -222,7 +221,6 @@ func TestUpdateAddress_NotFound(t *testing.T) {
 		StreetHouse: &street,
 	}
 
-	// Мок ожидает указатель params и возвращает ошибку репозитория
 	mockAddressRepo.On("UpdateAddress", ctx, params).Return(infrastructure.ErrAddressNotFound)
 
 	uc := NewUserUsecase(mockUserRepo, mockAddressRepo)

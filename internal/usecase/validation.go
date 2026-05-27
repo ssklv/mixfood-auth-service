@@ -62,29 +62,29 @@ func validateStreetHouse(streetHouse string) error {
 	return nil
 }
 
-func validateApartment(val string) error {
-	if utf8.RuneCountInString(val) > maxApartmentLen {
+func validateApartment(apartment string) error {
+	if utf8.RuneCountInString(apartment) > maxApartmentLen {
 		return ErrInvalidAddress
 	}
 	return nil
 }
 
-func validateEntrance(val string) error {
-	if utf8.RuneCountInString(val) > maxEntranceLen {
+func validateEntrance(entrance string) error {
+	if utf8.RuneCountInString(entrance) > maxEntranceLen {
 		return ErrInvalidAddress
 	}
 	return nil
 }
 
-func validateFloor(val string) error {
-	if utf8.RuneCountInString(val) > maxFloorLen {
+func validateFloor(floor string) error {
+	if utf8.RuneCountInString(floor) > maxFloorLen {
 		return ErrInvalidAddress
 	}
 	return nil
 }
 
-func validateDoorCode(val string) error {
-	if utf8.RuneCountInString(val) > maxDoorCodeLen {
+func validateDoorCode(doorCode string) error {
+	if utf8.RuneCountInString(doorCode) > maxDoorCodeLen {
 		return ErrInvalidAddress
 	}
 	return nil

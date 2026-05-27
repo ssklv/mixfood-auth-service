@@ -55,7 +55,6 @@ func (r *UsersRepository) CreateUser(ctx context.Context, user *domain.User) err
 	err = scanUser(r.db.QueryRow(ctx, sql, args...), user)
 	if err != nil {
 		var pgErr *pgconn.PgError
-		// 23505 — код ошибки Unique Violation в PostgreSQL
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			errStr := strings.ToLower(pgErr.Message + " " + pgErr.ConstraintName)
 			if strings.Contains(errStr, "phone") {
@@ -71,7 +70,11 @@ func (r *UsersRepository) CreateUser(ctx context.Context, user *domain.User) err
 }
 
 func (r *UsersRepository) GetUserByID(ctx context.Context, id int64) (*domain.User, error) {
-	sql, args, err := r.psql.Select(userCols...).From("users").Where(sq.Eq{"id": id}).ToSql()
+	sql, args, err := r.psql.
+		Select(userCols...).
+		From("users").
+		Where(sq.Eq{"id": id}).
+		ToSql()
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +91,11 @@ func (r *UsersRepository) GetUserByID(ctx context.Context, id int64) (*domain.Us
 }
 
 func (r *UsersRepository) GetUserByPhone(ctx context.Context, phone string) (*domain.User, error) {
-	sql, args, err := r.psql.Select(userCols...).From("users").Where(sq.Eq{"phone": phone}).ToSql()
+	sql, args, err := r.psql.
+		Select(userCols...).
+		From("users").
+		Where(sq.Eq{"phone": phone}).
+		ToSql()
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +112,9 @@ func (r *UsersRepository) GetUserByPhone(ctx context.Context, phone string) (*do
 }
 
 func (r *UsersRepository) UpdateUser(ctx context.Context, params *domain.UpdateUserParams) (*domain.User, error) {
-	builder := r.psql.Update("users").Set("updated_at", time.Now())
+	builder := r.psql.
+		Update("users").
+		Set("updated_at", time.Now())
 
 	if params.Name != nil {
 		builder = builder.Set("name", *params.Name)
@@ -117,7 +126,10 @@ func (r *UsersRepository) UpdateUser(ctx context.Context, params *domain.UpdateU
 		builder = builder.Set("email", *params.Email)
 	}
 
-	sql, args, err := builder.Where(sq.Eq{"id": params.ID}).Suffix("RETURNING " + strings.Join(userCols, ", ")).ToSql()
+	sql, args, err := builder.
+		Where(sq.Eq{"id": params.ID}).
+		Suffix("RETURNING " + strings.Join(userCols, ", ")).
+		ToSql()
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +150,10 @@ func (r *UsersRepository) UpdateUser(ctx context.Context, params *domain.UpdateU
 }
 
 func (r *UsersRepository) DeleteUser(ctx context.Context, id int64) error {
-	sql, args, err := r.psql.Delete("users").Where(sq.Eq{"id": id}).ToSql()
+	sql, args, err := r.psql.
+		Delete("users").
+		Where(sq.Eq{"id": id}).
+		ToSql()
 	if err != nil {
 		return err
 	}

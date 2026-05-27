@@ -155,13 +155,11 @@ func (h *userHandler) getMyAddresses(c fiber.Ctx) error {
 func (h *userHandler) updateAddress(c fiber.Ctx) error {
 	userID := c.Locals("userID").(int64)
 
-	// ИСПРАВЛЕНО: Парсим тело запроса в UpdateAddressParams вместо Address
 	var params domain.UpdateAddressParams
 	if err := c.Bind().Body(&params); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: "invalid request body"})
 	}
 
-	// ИСПРАВЛЕНО: Передаем params (указатель) в UseCase
 	if err := h.userUC.UpdateAddress(c.Context(), userID, &params); err != nil {
 		if errors.Is(err, usecase.ErrInvalidAddress) {
 			return c.Status(fiber.StatusBadRequest).JSON(ErrorResponse{Error: err.Error()})

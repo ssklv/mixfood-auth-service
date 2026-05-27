@@ -10,9 +10,9 @@ import (
 const (
 	minPasswordLen = 6
 	maxNameLen     = 30
-	maxAddressLen  = 100
 	maxEmailLen    = 255
 
+	maxStreetHouse  = 100
 	maxApartmentLen = 20
 	maxEntranceLen  = 10
 	maxFloorLen     = 10
@@ -53,9 +53,10 @@ func validateEmail(email string) error {
 	return nil
 }
 
+// //
 func validateStreetHouse(streetHouse string) error {
 	count := utf8.RuneCountInString(strings.TrimSpace(streetHouse))
-	if count == 0 || count > maxAddressLen {
+	if count == 0 || count > maxStreetHouse {
 		return ErrInvalidAddress
 	}
 	return nil

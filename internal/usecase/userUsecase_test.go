@@ -87,7 +87,7 @@ func TestCreateAddress_ValidationError_ApartmentTooLong(t *testing.T) {
 	invalidAddr := &domain.Address{
 		UserID:      42,
 		StreetHouse: "ул. Пушкина, д. 10",
-		Apartment:   strings.Repeat("A", 25), // Максимум 20, вызовет ошибку
+		Apartment:   strings.Repeat("A", 25),
 	}
 
 	uc := NewUserUsecase(mockUserRepo, mockAddressRepo)

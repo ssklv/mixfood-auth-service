@@ -61,7 +61,6 @@ func (uu *userUsecase) UpdateProfile(ctx context.Context, params *domain.UpdateU
 	return user, nil
 }
 
-// ИСПРАВЛЕНО: Теперь вызывается корректный валидатор validateStreetHouse
 func (uu *userUsecase) CreateAddress(ctx context.Context, addr *domain.Address) error {
 	if err := validateStreetHouse(addr.StreetHouse); err != nil {
 		return err
@@ -94,7 +93,6 @@ func (uu *userUsecase) GetAddresses(ctx context.Context, userID int64) ([]domain
 	return addrs, nil
 }
 
-// ИСПРАВЛЕНО: Теперь вызывается корректный валидатор validateStreetHouse для указателя
 func (uu *userUsecase) UpdateAddress(ctx context.Context, userID int64, params *domain.UpdateAddressParams) error {
 	if params.StreetHouse != nil {
 		if err := validateStreetHouse(*params.StreetHouse); err != nil {

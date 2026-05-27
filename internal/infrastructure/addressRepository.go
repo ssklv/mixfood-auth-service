@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"context"
 	"errors"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -26,20 +27,28 @@ type AddressRepository struct {
 }
 
 func NewAddressRepository(db *pgxpool.Pool, psql sq.StatementBuilderType) *AddressRepository {
-	return &AddressRepository{db: db, psql: psql}
+	return &AddressRepository{
+		db:   db,
+		psql: psql,
+	}
 }
 
 func (r *AddressRepository) CreateAddress(ctx context.Context, addr *domain.Address) error {
 	sql, args, err := r.psql.
 		Insert("addresses").
-		Columns("user_id", "street_house", "apartment", "entrance", "floor", "door_code").
+		Columns(addressCols[1:]...).
 		Values(addr.UserID, addr.StreetHouse, addr.Apartment, addr.Entrance, addr.Floor, addr.DoorCode).
-		Suffix("RETURNING id").
+		Suffix("RETURNING " + strings.Join(addressCols, ", ")).
 		ToSql()
 	if err != nil {
 		return err
 	}
-	return r.db.QueryRow(ctx, sql, args...).Scan(&addr.ID)
+
+	err = scanAddress(r.db.QueryRow(ctx, sql, args...), addr)
+	if err != nil {
+		return ErrDatabaseInternal
+	}
+	return nil
 }
 
 func (r *AddressRepository) GetAddressByID(ctx context.Context, id int64) (*domain.Address, error) {
@@ -142,6 +151,7 @@ func (r *AddressRepository) UpdateAddress(ctx context.Context, params domain.Upd
 	}
 	return nil
 }
+
 func scanAddress(row pgx.Row, addr *domain.Address) error {
 	return row.Scan(
 		&addr.ID,

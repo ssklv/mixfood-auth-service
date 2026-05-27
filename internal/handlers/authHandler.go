@@ -8,6 +8,12 @@ import (
 	"github.com/ssklv/mixfood-auth-service/internal/usecase"
 )
 
+type authHandler struct {
+	authUC        usecase.AuthUsecase
+	tokenProvider usecase.TokenProvider
+	log           Logger
+}
+
 type registerReq struct {
 	Phone    string `json:"phone"`
 	Password string `json:"password"`
@@ -17,12 +23,6 @@ type registerReq struct {
 type loginReq struct {
 	Phone    string `json:"phone"`
 	Password string `json:"password"`
-}
-
-type authHandler struct {
-	authUC        usecase.AuthUsecase
-	tokenProvider usecase.TokenProvider
-	log           Logger
 }
 
 func NewAuthHandler(authUC usecase.AuthUsecase, tp usecase.TokenProvider, log Logger) *authHandler {
@@ -40,7 +40,6 @@ func (h *authHandler) RegisterRoutes(router fiber.Router, authMiddleware fiber.H
 	auth.Post("/login", h.login)
 	auth.Get("/refresh", h.refresh)
 
-	// Логаут требует, чтобы пользователь был авторизован
 	auth.Post("/logout", authMiddleware, h.logout)
 }
 
@@ -128,7 +127,6 @@ func (h *authHandler) logout(c fiber.Ctx) error {
 
 	if err != nil {
 		h.log.Error("Logout failed", "err", err.Error())
-		// Мы всё равно очистили куки клиента, но возвращаем ошибку, если сессии не было в БД
 		if errors.Is(err, usecase.ErrSessionNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(ErrorResponse{Error: "active session not found"})
 		}

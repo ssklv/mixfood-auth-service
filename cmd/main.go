@@ -1,5 +1,6 @@
 package main
 
+//http://localhost:8080/swagger/
 import (
 	"fmt"
 
@@ -87,6 +88,6 @@ func main() {
 	}
 
 	if err := app.Listen(":" + cfg.ServerPort); err != nil && logger.Logger != nil {
-		logger.Logger.Fatal("Критическая ошибка сервера: " + err.Error())
+		logger.Logger.Fatal("Ошибка сервера: " + err.Error())
 	}
 }
